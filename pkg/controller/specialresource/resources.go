@@ -2,10 +2,12 @@ package specialresource
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	"github.com/openshift-psap/special-resource-operator/pkg/yamlutil"
 	routev1 "github.com/openshift/api/route/v1"
@@ -89,9 +91,52 @@ func ReconcileClusterResources(r *ReconcileSpecialResource) error {
 	return nil
 }
 
+// EachResourceListItem Handle UnstructuredList
+func EachResourceListItem(obj *unstructured.UnstructuredList, r *ReconcileSpecialResource,
+	fn func(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error) error {
+
+	field, ok := obj.Object["items"]
+	if !ok {
+		return errors.New("content is not a list")
+	}
+	items, ok := field.([]interface{})
+	if !ok {
+		return fmt.Errorf("content is not a list: %T", field)
+	}
+	for _, item := range items {
+		child, ok := item.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("items member is not an object: %T", child)
+		}
+		if err := fn(&unstructured.Unstructured{Object: child}, r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ReconcileResource prefix, CRUD, postfix
+func ReconcileResource(obj interface{}, r *ReconcileSpecialResource) error {
+
+	switch res := obj.(type) {
+	case *unstructured.UnstructuredList:
+		if err := EachResourceListItem(res, r, CRUD); err != nil {
+			exitOnError(err, "CRUD exited non-zero")
+		}
+	case *unstructured.Unstructured:
+		// Create Update Delete Patch resources
+		if err := CRUD(res, r); err != nil {
+			exitOnError(err, "CRUD exited non-zero")
+		}
+	default:
+		log.Info("DEFAULT", "No idea what to do with: ", reflect.TypeOf(obj))
+	}
+
+	return nil
+}
+
 func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 
-	namespace := r.specialresource.Namespace
 	scanner := yamlutil.NewYAMLScanner(yamlFile)
 
 	for scanner.Scan() {
@@ -100,23 +145,23 @@ func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 		obj := &unstructured.Unstructured{}
 		jsonSpec, err := yaml.YAMLToJSON(yamlSpec)
 		if err != nil {
-			return fmt.Errorf("could not convert yaml file to json: %v", err)
+			log.Error(err, "Could not convert yaml file to json")
+			return err
 		}
-
 		obj.UnmarshalJSON(jsonSpec)
-		obj.SetNamespace(namespace)
 
 		// Callbacks before CRUD will update the manifests
-		if err := prefixResourceCallback(obj, r); err != nil {
+		modified, err := prefixResourceCallback(obj, r)
+		if err != nil {
 			log.Error(err, "prefix callbacks exited non-zero")
 			return err
 		}
-		// Create Update Delete Patch resources
-		if err := CRUD(obj, r); err != nil {
-			exitOnError(err, "CRUD exited non-zero")
-		}
+
+		ReconcileResource(modified, r)
+
 		// Callbacks after CRUD will wait for ressource and check status
-		if err := postfixResourceCallback(obj, r); err != nil {
+		_, err = postfixResourceCallback(obj, r)
+		if err != nil {
 			log.Error(err, "postfix callbacks exited non-zero")
 			return err
 		}
@@ -161,11 +206,14 @@ func updateResource(req *unstructured.Unstructured, found *unstructured.Unstruct
 // CRUD Create Update Delete Resource
 func CRUD(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 
+	obj.SetNamespace(r.specialresource.Namespace)
+
 	logger := log.WithValues("Kind", obj.GetKind(), "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 	found := obj.DeepCopy()
 
 	if err := controllerutil.SetControllerReference(r.specialresource, obj, r.scheme); err != nil {
-		return fmt.Errorf("failed to set controller reference: (%v)", err)
+		log.Error(err, "Failed to set controller reference")
+		return err
 	}
 
 	err := r.client.Get(context.TODO(), types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, found)

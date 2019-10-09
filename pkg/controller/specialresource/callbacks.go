@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-type resourceCallbacks map[string]func(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error
+type resourceCallbacks map[string]func(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error)
 
 var prefixCallback resourceCallbacks
 var postfixCallback resourceCallbacks
@@ -18,6 +18,7 @@ func SetupCallbacks() error {
 	postfixCallback = make(resourceCallbacks)
 
 	prefixCallback["nvidia-driver-daemonset"] = prefixNVIDIAdriverDaemonset
+	prefixCallback["nvidia-driver-validation"] = prefixNVIDIAdriverValdiation
 	prefixCallback["nvidia-grafana-configmap"] = prefixNVIDIAgrafanaConfigMap
 
 	return nil
@@ -30,23 +31,24 @@ func checkNestedFields(found bool, err error) {
 	}
 }
 
-func prefixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+func prefixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error) {
 
 	var ok bool
 	todo := ""
 	annotations := obj.GetAnnotations()
 
 	if todo, ok = annotations["callback"]; !ok {
-		return nil
+		return obj, nil
 	}
 
 	if prefix, ok := prefixCallback[todo]; ok {
 		return prefix(obj, r)
 	}
-	return nil
+
+	return obj, nil
 }
 
-func postfixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+func postfixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error) {
 
 	var ok bool
 	todo := ""
@@ -54,15 +56,15 @@ func postfixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecial
 	todo = annotations["callback"]
 
 	if todo, ok = annotations["callback"]; !ok {
-		return nil
+		return obj, nil
 	}
 	if postfix, ok := postfixCallback[todo]; ok {
 		return postfix(obj, r)
 	}
 
 	if err := waitForResource(obj, r); err != nil {
-		return err
+		return obj, err
 	}
 
-	return nil
+	return obj, nil
 }

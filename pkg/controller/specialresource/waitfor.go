@@ -90,7 +90,7 @@ func waitForResourceAvailability(obj *unstructured.Unstructured, r *ReconcileSpe
 		err = r.client.Get(context.TODO(), types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, found)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				log.Info("Waiting for creation of ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+				log.Info("Waiting for creation of ", "Kind", obj.GetKind(), "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 				return false, nil
 			}
 			return false, err
@@ -111,10 +111,10 @@ func waitForResourceFullAvailability(obj *unstructured.Unstructured, r *Reconcil
 			return false, err
 		}
 		if callback(found) {
-			log.Info("Resource available ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+			log.Info("Resource available ", "Kind", obj.GetKind(), "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 			return true, nil
 		}
-		log.Info("Waiting for availability of ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+		log.Info("Waiting for availability of ", "Kind", obj.GetKind(), "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 		return false, nil
 	})
 	return err

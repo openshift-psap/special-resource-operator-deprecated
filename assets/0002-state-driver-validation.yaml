@@ -31,6 +31,7 @@ spec:
         allowPrivilegeEscalation: false
         capabilities:
           drop: ["ALL"]
-  nodeSelector:
-    node-role.kubernetes.io/worker: ""
-    feature.node.kubernetes.io/pci-10de.present: "true"
+  nodeName: "REPLACE_NODE_NAME"
+#  nodeSelector:
+#    node-role.kubernetes.io/worker: ""
+#    feature.node.kubernetes.io/pci-10de.present: "true"

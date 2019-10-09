@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hash/adler32"
+	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func prefixNVIDIAdriverDaemonset(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+func prefixNVIDIAdriverDaemonset(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error) {
 
 	containers, found, err := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "containers")
 	checkNestedFields(found, err)
@@ -44,23 +46,30 @@ func prefixNVIDIAdriverDaemonset(obj *unstructured.Unstructured, r *ReconcileSpe
 		"spec", "template", "spec", "nodeSelector", "feature.node.kubernetes.io/kernel-version.full")
 	checkNestedFields(true, err)
 
-	return nil
+	return obj, nil
+}
+
+func getAllNodesWithLabel(r *ReconcileSpecialResource, label string) []corev1.Node {
+	// We need the node labels to fetch the correct container
+	opts := &client.ListOptions{}
+	opts.SetLabelSelector(label)
+	list := &corev1.NodeList{}
+	err := r.client.List(context.TODO(), opts, list)
+	if err != nil {
+		log.Error(err, "Could not get NodeList")
+		return nil
+	}
+	return list.Items
 }
 
 func kernelFullVersion(r *ReconcileSpecialResource) string {
 
 	logger := log.WithValues("Request.Namespace", "default", "Request.Name", "Node")
-	// We need the node labels to fetch the correct container
-	opts := &client.ListOptions{}
-	opts.SetLabelSelector("feature.node.kubernetes.io/pci-10de.present=true")
-	list := &corev1.NodeList{}
-	err := r.client.List(context.TODO(), opts, list)
-	if err != nil {
-		logger.Info("Could not get NodeList", err)
-	}
+
+	nodes := getAllNodesWithLabel(r, "feature.node.kubernetes.io/pci-10de.present=true")
 	// Assuming all nodes are running the same kernel version,
 	// One could easily add driver-kernel-versions for each node.
-	for _, node := range list.Items {
+	for _, node := range nodes {
 		labels := node.GetLabels()
 
 		var ok bool
@@ -119,14 +128,14 @@ func getPromURLPass(obj *unstructured.Unstructured, r *ReconcileSpecialResource)
 	return promURL, promPass, nil
 }
 
-func prefixNVIDIAgrafanaConfigMap(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+func prefixNVIDIAgrafanaConfigMap(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error) {
 
 	promData, found, err := unstructured.NestedString(obj.Object, "data", "ocp-prometheus.yml")
 	checkNestedFields(found, err)
 
 	promURL, promPass, err := getPromURLPass(obj, r)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	promData = strings.Replace(promData, "REPLACE_PROM_URL", promURL, -1)
@@ -136,8 +145,48 @@ func prefixNVIDIAgrafanaConfigMap(obj *unstructured.Unstructured, r *ReconcileSp
 	//log.Info("PROM", "DATA", promData)
 	if err := unstructured.SetNestedField(obj.Object, promData, "data", "ocp-prometheus.yml"); err != nil {
 		log.Error(err, "Couldn't update ocp-prometheus.yml")
-		return err
+		return nil, err
 	}
 
-	return nil
+	return obj, nil
+}
+
+func prefixNVIDIAdriverValdiation(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error) {
+
+	list := &unstructured.UnstructuredList{}
+	name := obj.GetName()
+	nodes := getAllNodesWithLabel(r, "feature.node.kubernetes.io/pci-10de.present=true")
+
+	list.SetAPIVersion("v1")
+	list.SetKind("PodList")
+	list.
+	for _, node := range nodes {
+		checksum := adler32.Checksum([]byte(node.GetName()))
+		strsum := strconv.FormatUint(uint64(checksum), 16)
+		log.Info("PREFIX", "NodeName", node.GetName(), "ADLER32", strsum)
+
+		fullName := name + "-" + strsum
+
+		add := obj.DeepCopy()
+
+		if err := unstructured.SetNestedField(add.Object, fullName, "metadata", "name"); err != nil {
+			log.Error(err, "Couldn't update Pod with full name")
+			return nil, err
+		}
+
+		list.Items = append(list.Items, *add)
+
+		for i := range list.Items {
+			log.Info("ITEMS", "INNER", list.Items[i].GetName())
+		}
+
+	}
+
+	list.Object["items"] = list.Items
+
+	for i := range list.Items {
+		log.Info("ITEMS", "OUTER", list.Items[i].GetName())
+	}
+
+	return list, nil
 }
