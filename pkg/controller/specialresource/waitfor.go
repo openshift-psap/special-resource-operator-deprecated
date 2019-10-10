@@ -80,7 +80,7 @@ func waitForDaemonSet(obj *unstructured.Unstructured, r *ReconcileSpecialResourc
 
 var (
 	retryInterval = time.Second * 5
-	timeout       = time.Second * 60
+	timeout       = time.Second * 30
 )
 
 func waitForResourceAvailability(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {

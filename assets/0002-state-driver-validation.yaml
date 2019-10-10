@@ -1,4 +1,26 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: entrypoint
+data:
+  entrypoint.sh: |-
+    #!/bin/bash
+    NUM_GPUS=$(nvidia-smi -L | wc -l)
+    for i in `seq 0 $(($NUM_GPUS-1))`
+    do 
+      echo "Executing VectorAdd on GPU$i"
+      CUDA_VISIBLE_DEVICES=$i /usr/local/cuda/samples/0_Simple/vectorAdd/vectorAdd
+      if [ ! $? -eq 0 ];then 
+        exit 1
+      fi
+    done
+
+    if [ $NUM_GPUS -eq 0 ]; then
+      echo "ERROR No GPUs found"
+      exit 1
+    fi
+---
+apiVersion: v1
 kind: Pod
 metadata:
   labels:
@@ -19,6 +41,12 @@ spec:
   containers:
     - name: cuda-vector-add
       image: "quay.io/openshift-psap/cuda-vector-add:v0.1"
+      command: ["/bin/entrypoint.sh"]
+      volumeMounts:
+      - name: entrypoint
+        mountPath: /bin/entrypoint.sh
+        readOnly: true
+        subPath: entrypoint.sh
       env:
         - name: NVIDIA_VISIBLE_DEVICES
           value: all
@@ -31,7 +59,8 @@ spec:
         allowPrivilegeEscalation: false
         capabilities:
           drop: ["ALL"]
-  nodeName: "REPLACE_NODE_NAME"
-#  nodeSelector:
-#    node-role.kubernetes.io/worker: ""
-#    feature.node.kubernetes.io/pci-10de.present: "true"
+  volumes:
+  - name: entrypoint
+    configMap:
+      defaultMode: 0700
+      name: entrypoint

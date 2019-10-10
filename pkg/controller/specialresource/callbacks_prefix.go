@@ -142,7 +142,6 @@ func prefixNVIDIAgrafanaConfigMap(obj *unstructured.Unstructured, r *ReconcileSp
 	promData = strings.Replace(promData, "REPLACE_PROM_PASS", promPass, -1)
 	promData = strings.Replace(promData, "REPLACE_PROM_USER", "internal", -1)
 
-	//log.Info("PROM", "DATA", promData)
 	if err := unstructured.SetNestedField(obj.Object, promData, "data", "ocp-prometheus.yml"); err != nil {
 		log.Error(err, "Couldn't update ocp-prometheus.yml")
 		return nil, err
@@ -151,19 +150,22 @@ func prefixNVIDIAgrafanaConfigMap(obj *unstructured.Unstructured, r *ReconcileSp
 	return obj, nil
 }
 
-func prefixNVIDIAdriverValdiation(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error) {
+func createResourceListForAllNodes(obj *unstructured.Unstructured, r *ReconcileSpecialResource,
+	apiVersion string, kind string, label string) (interface{}, error) {
 
 	list := &unstructured.UnstructuredList{}
 	name := obj.GetName()
-	nodes := getAllNodesWithLabel(r, "feature.node.kubernetes.io/pci-10de.present=true")
+	nodes := getAllNodesWithLabel(r, label)
 
-	list.SetAPIVersion("v1")
-	list.SetKind("PodList")
-	list.
+	list.SetAPIVersion(apiVersion)
+	list.SetKind(kind)
+
+	unstructuredItems := make([]unstructured.Unstructured, 0, len(nodes))
+	newItems := make([]interface{}, 0, len(nodes))
+
 	for _, node := range nodes {
 		checksum := adler32.Checksum([]byte(node.GetName()))
 		strsum := strconv.FormatUint(uint64(checksum), 16)
-		log.Info("PREFIX", "NodeName", node.GetName(), "ADLER32", strsum)
 
 		fullName := name + "-" + strsum
 
@@ -174,19 +176,25 @@ func prefixNVIDIAdriverValdiation(obj *unstructured.Unstructured, r *ReconcileSp
 			return nil, err
 		}
 
-		list.Items = append(list.Items, *add)
-
-		for i := range list.Items {
-			log.Info("ITEMS", "INNER", list.Items[i].GetName())
+		if err := unstructured.SetNestedField(add.Object, node.GetName(), "spec", "nodeName"); err != nil {
+			log.Error(err, "Couldn't update Pod with nodeName")
+			return nil, err
 		}
 
+		unstructuredItems = append(unstructuredItems, unstructured.Unstructured{Object: add.Object})
+		newItems = append(newItems, add.Object)
 	}
 
-	list.Object["items"] = list.Items
-
-	for i := range list.Items {
-		log.Info("ITEMS", "OUTER", list.Items[i].GetName())
-	}
+	list.Items = unstructuredItems
+	list.Object["items"] = newItems
 
 	return list, nil
+}
+
+func prefixNVIDIAdriverValdiation(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error) {
+	return createResourceListForAllNodes(obj, r, "v1", "PodList", "feature.node.kubernetes.io/pci-10de.present=true")
+}
+
+func prefixNVIDIAdevicePluginValidation(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error) {
+	return createResourceListForAllNodes(obj, r, "v1", "PodList", "feature.node.kubernetes.io/pci-10de.present=true")
 }

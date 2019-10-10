@@ -2,11 +2,13 @@ package specialresource
 
 import (
 	"os"
+	"reflect"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-type resourceCallbacks map[string]func(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error)
+type callback func(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error)
+type resourceCallbacks map[string]callback
 
 var prefixCallback resourceCallbacks
 var postfixCallback resourceCallbacks
@@ -20,6 +22,7 @@ func SetupCallbacks() error {
 	prefixCallback["nvidia-driver-daemonset"] = prefixNVIDIAdriverDaemonset
 	prefixCallback["nvidia-driver-validation"] = prefixNVIDIAdriverValdiation
 	prefixCallback["nvidia-grafana-configmap"] = prefixNVIDIAgrafanaConfigMap
+	prefixCallback["nvidia-device-plugin-validation"] = prefixNVIDIAdevicePluginValidation
 
 	return nil
 }
@@ -31,39 +34,60 @@ func checkNestedFields(found bool, err error) {
 	}
 }
 
-func prefixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error) {
+func getCallback(obj *unstructured.Unstructured, fn resourceCallbacks) (callback, bool) {
 
 	var ok bool
 	todo := ""
 	annotations := obj.GetAnnotations()
 
 	if todo, ok = annotations["callback"]; !ok {
-		return obj, nil
+		return nil, false
 	}
 
-	if prefix, ok := prefixCallback[todo]; ok {
-		return prefix(obj, r)
+	if prefix, ok := fn[todo]; ok {
+		return prefix, ok
 	}
-
-	return obj, nil
+	return nil, false
 }
 
-func postfixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecialResource) (interface{}, error) {
+func prefixResourceCallback(obj interface{}, r *ReconcileSpecialResource) (interface{}, error) {
 
-	var ok bool
-	todo := ""
-	annotations := obj.GetAnnotations()
-	todo = annotations["callback"]
-
-	if todo, ok = annotations["callback"]; !ok {
-		return obj, nil
+	switch res := obj.(type) {
+	case *unstructured.Unstructured:
+		if prefix, ok := getCallback(res, prefixCallback); ok {
+			return prefix(res, r)
+		}
+	case *unstructured.UnstructuredList:
+		log.Info("DEFAULT", "Lists not yet supported prefix", res.GetKind())
+	default:
+		log.Info("DEFAULT", "No idea what to do with: ", reflect.TypeOf(obj))
 	}
-	if postfix, ok := postfixCallback[todo]; ok {
-		return postfix(obj, r)
-	}
+	return obj, nil
 
-	if err := waitForResource(obj, r); err != nil {
-		return obj, err
+}
+
+func postfixResourceCallback(obj interface{}, r *ReconcileSpecialResource) (interface{}, error) {
+
+	switch res := obj.(type) {
+	case *unstructured.Unstructured:
+		if postfix, ok := getCallback(res, postfixCallback); ok {
+			return postfix(res, r)
+		}
+		// If there is no postfix callback per default we wait for any resource
+		if err := waitForResource(res, r); err != nil {
+			return obj, err
+		}
+
+	case *unstructured.UnstructuredList:
+		for _, item := range res.Items {
+
+			if err := waitForResource(&item, r); err != nil {
+				return obj, err
+			}
+		}
+
+	default:
+		log.Info("DEFAULT", "No idea what to do with: ", reflect.TypeOf(obj))
 	}
 
 	return obj, nil

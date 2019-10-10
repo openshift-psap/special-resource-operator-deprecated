@@ -160,7 +160,7 @@ func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 		ReconcileResource(modified, r)
 
 		// Callbacks after CRUD will wait for ressource and check status
-		_, err = postfixResourceCallback(obj, r)
+		_, err = postfixResourceCallback(modified, r)
 		if err != nil {
 			log.Error(err, "postfix callbacks exited non-zero")
 			return err

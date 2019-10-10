@@ -20,6 +20,12 @@ spec:
   containers:
     - name: cuda-vector-add
       image: "quay.io/openshift-psap/cuda-vector-add:v0.1"
+      command: ["/bin/entrypoint.sh"]
+      volumeMounts:
+      - name: entrypoint
+        mountPath: /bin/entrypoint.sh
+        readOnly: true
+        subPath: entrypoint.sh
       env:
         - name: NVIDIA_VISIBLE_DEVICES
           value: all
@@ -33,6 +39,11 @@ spec:
           drop: ["ALL"]
       resources:
         limits:
-          nvidia.com/gpu: 1 # requesting 1 GPU
+          nvidia.com/gpu:
+  volumes:
+  - name: entrypoint
+    configMap:
+      defaultMode: 0700
+      name: entrypoint
   nodeSelector:
     node-role.kubernetes.io/worker: ""
