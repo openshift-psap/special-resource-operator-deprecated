@@ -1,0 +1,141 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nvidia-container-toolkit
+  namespace: openshift-sro
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: nvidia-container-toolkit
+  namespace: openshift-sro
+rules:
+- apiGroups:
+  - security.openshift.io
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
+  resourceNames:
+  - privileged
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: nvidia-container-toolkit
+  namespace: openshift-sro
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: nvidia-container-toolkit
+  namespace: openshift-sro
+subjects:
+- kind: ServiceAccount
+  name: nvidia-container-toolkit
+  namespace: openshift-sro
+userNames:
+- system:serviceaccount:openshift-sro:nvidia-container-toolkit
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvidia-container-toolkit-entrypoint
+  namespace: openshift-sro
+data:
+  entrypoint.sh: |-
+    #!/bin/bash
+
+    chcon -t container_file_t /run/nvidia/driver/dev/*
+
+    /work/run.sh /run/nvidia 
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: nvidia-container-toolkit-daemonset
+  name: nvidia-container-toolkit-daemonset
+  namespace: openshift-sro
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-container-toolkit-daemonset
+  template:
+    metadata:
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+      labels:
+        app: nvidia-container-toolkit-daemonset
+    spec:
+      containers:
+      - image: nvidia/container-toolkit:1.0.0-alpha.3
+        command: ["/bin/entrypoint.sh"]
+        env:
+        - name: TOOLKIT_ARGS
+          value: --symlink /usr/local/nvidia
+        - name: RUNTIME_ARGS
+        - name: RUNTIME
+          value: crio
+        imagePullPolicy: IfNotPresent
+        name: nvidia-container-toolkit-ctr
+        resources: {}
+        securityContext:
+          privileged: true
+          seLinuxOptions:
+            level: s0
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - name: entrypoint
+          mountPath: /bin/entrypoint.sh
+          readOnly: true
+          subPath: entrypoint.sh
+        - mountPath: /var/run/docker.sock
+          name: docker-socket
+        - mountPath: /run/nvidia
+          mountPropagation: Bidirectional
+          name: nvidia-install-path
+        - mountPath: /etc/docker
+          name: docker-config
+        - mountPath: /usr/local/nvidia
+          name: nvidia-local
+        - mountPath: /usr/share/containers/oci/hooks.d
+          name: crio-hooks
+      hostPID: true
+      nodeSelector:
+        feature.node.kubernetes.io/pci-10de.present: "true"
+      restartPolicy: Always
+      securityContext: {}
+      serviceAccount: nvidia-container-toolkit
+      serviceAccountName: nvidia-container-toolkit
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Exists
+      volumes:
+      - name: entrypoint
+        configMap:
+          defaultMode: 0700
+          name: nvidia-container-toolkit-entrypoint
+      - hostPath:
+          path: /var/run/docker.sock
+          type: ""
+        name: docker-socket
+      - hostPath:
+          path: /run/nvidia
+          type: ""
+        name: nvidia-install-path
+      - hostPath:
+          path: /etc/docker
+          type: ""
+        name: docker-config
+      - hostPath:
+          path: /usr/local/nvidia
+          type: ""
+        name: nvidia-local
+      - hostPath:
+          path: /etc/containers/oci/hooks.d
+          type: ""
+        name: crio-hooks

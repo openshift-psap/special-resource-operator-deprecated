@@ -138,13 +138,14 @@ func waitForResource(obj *unstructured.Unstructured, r *ReconcileSpecialResource
 			return err
 		}
 	}
-	// Wait for specific condition of a specific resource
+
+	/* Wait for specific condition of a specific resource
 	if wait, ok := waitFor[obj.GetName()]; ok {
 		if err = wait(obj, r); err != nil {
 			return err
 		}
 	}
-	// If resource available, label the nodes according to the current state
+	*/ // If resource available, label the nodes according to the current state
 	// if e.g driver-container ready -> specialresource.openshift.io/driver-container:ready
 	return labelNodesAccordingToState(obj, r)
 }
@@ -224,8 +225,8 @@ func waitForBuild(obj *unstructured.Unstructured, r *ReconcileSpecialResource) e
 // WAIT FOR RESOURCES -- other file?
 
 var (
-	retryInterval = time.Second * 5
-	timeout       = time.Second * 120
+	retryInterval = time.Second * 2
+	timeout       = time.Second * 6
 )
 
 func waitForResourceAvailability(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {

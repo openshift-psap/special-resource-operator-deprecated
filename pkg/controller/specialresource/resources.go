@@ -36,6 +36,10 @@ var (
 		list:  &unstructured.UnstructuredList{},
 		count: 0xDEADBEEF,
 	}
+	operatingSystem = ""
+	kernelVersion   = ""
+	clusterVersion  = ""
+	updateVendor    = ""
 )
 
 // AddKubeClient Add a native non-caching client for advanced CRUD operations
@@ -120,7 +124,8 @@ func getSROstatesCM(r *ReconcileSpecialResource) (map[string]interface{}, []stri
 	cm.SetAPIVersion("v1")
 	cm.SetKind("ConfigMap")
 
-	err := r.client.Get(context.TODO(), types.NamespacedName{Namespace: r.specialresource.GetNamespace(), Name: "special-resource-operator-states"}, cm)
+	ns := r.specialresource.GetNamespace()
+	err := r.client.Get(context.TODO(), types.NamespacedName{Namespace: ns, Name: "special-resource-operator-states"}, cm)
 
 	if apierrors.IsNotFound(err) {
 		log.Info("ConfigMap special-resource-states not found, see README and create the states")
@@ -149,6 +154,18 @@ func ReconcileClusterResources(r *ReconcileSpecialResource) error {
 	node.list, err = cacheNodes(r, false)
 	exitOnError(err, "Cannot get Nodes")
 
+	if operatingSystem, err = getOperatingSystem(); err != nil {
+		exitOnError(err, "Failed to get operating system")
+	}
+
+	if kernelVersion, err = getKernelVersion(); err != nil {
+		exitOnError(err, "Failed to get kernel version")
+	}
+
+	if clusterVersion, err = getClusterVersion(); err != nil {
+		exitOnError(err, "Failed to get cluster version")
+	}
+
 	for _, state := range states {
 
 		log.Info("Executing", "State", state)
@@ -175,8 +192,21 @@ func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 			return fmt.Errorf("could not convert yaml file to json: %v", err)
 		}
 
-		obj.UnmarshalJSON(jsonSpec)
+		if err := injectRuntimeInformation(&jsonSpec); err != nil {
+			exitOnError(err, "Cannot inject runtime information")
+		}
+
+		if err := obj.UnmarshalJSON(jsonSpec); err != nil {
+			exitOnError(err, "Cannot unmarshall json spec, check your manifests")
+		}
+
 		obj.SetNamespace(namespace)
+
+		// We are only building a driver-container if we cannot pull the image
+		if obj.GetKind() == "BuildConfig" && updateVendor == "" {
+			log.Info("Skpping due to", "updateVendor", updateVendor)
+			continue
+		}
 
 		// Callbacks before CRUD will update the manifests
 		if err := prefixResourceCallback(obj, r); err != nil {
@@ -273,6 +303,17 @@ func CRUD(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 		if err := updateResource(required, found); err != nil {
 			logger.Error(err, "Couldn't Update ResourceVersion")
 			return err
+		}
+
+		// BuildConfig are currently not triggered by an update need to delete first
+		if obj.GetKind() == "BuildConfig" {
+
+			labels := obj.GetLabels()
+			if vendor, ok := labels["specialresource.openshift.io/driver-container-vendor"]; ok && vendor == updateVendor {
+				if err := r.client.Delete(context.TODO(), obj); err != nil {
+					exitOnError(err, "Couldn't Delete Resource")
+				}
+			}
 		}
 
 		if err := r.client.Update(context.TODO(), required); err != nil {
