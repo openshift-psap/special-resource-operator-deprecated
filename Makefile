@@ -1,6 +1,6 @@
 REGISTRY       ?= quay.io
 ORG            ?= openshift-psap
-TAG            ?= $(shell git branch | grep \* | cut -d ' ' -f2)
+TAG            ?= $(shell git describe --tags --dirty --always)
 IMAGE          ?= ${REGISTRY}/${ORG}/special-resource-operator:${TAG}
 NAMESPACE      ?= openshift-sro
 PULLPOLICY     ?= IfNotPresent
@@ -19,14 +19,11 @@ GO_BUILD_RECIPE = GOOS=$(GOOS) go build -mod=vendor -o $(BIN) $(MAIN_PACKAGE)
 
 TEST_RESOURCES  = $(shell mktemp -d)/test-init.yaml
 
-
 BIN=$(lastword $(subst /, ,$(PACKAGE)))
 
 GOFMT_CHECK=$(shell find . -not \( \( -wholename './.*' -o -wholename '*/vendor/*' \) -prune \) -name '*.go' | sort -u | xargs gofmt -s -l)
 
-
 all: build
-
 
 build:
 	$(GO_BUILD_RECIPE)
@@ -85,8 +82,7 @@ local-image:
 test:
 	go test ./cmd/... ./pkg/... -coverprofile cover.out
 
-local-image-push:
+local-image-push: local-image
 	podman push $(IMAGE) 
 
 .PHONY: all build generate verify verify-gofmt clean local-image local-image-push $(DEPLOY_CRDS) grafana
-
