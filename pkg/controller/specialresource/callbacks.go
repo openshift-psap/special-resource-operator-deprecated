@@ -100,6 +100,13 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 	}
 
 	log.Info("checkForImagePullBackOff get pods")
+
+	labels := obj.GetLabels()
+	value := labels["app"]
+
+	find := make(map[string]string)
+	find["app"] = value
+
 	// DaemonSet is not coming up, lets check if we have to rebuild
 	pods := &unstructured.UnstructuredList{}
 	pods.SetAPIVersion("v1")
@@ -107,7 +114,7 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 
 	opts := &client.ListOptions{}
 	opts.InNamespace(r.specialresource.Namespace)
-	opts.MatchingLabels(obj.GetLabels())
+	opts.MatchingLabels(find)
 	log.Info("checkForImagePullBackOff get pods1")
 
 	err := r.client.List(context.TODO(), opts, pods)
