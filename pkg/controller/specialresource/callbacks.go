@@ -117,6 +117,8 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 		return fmt.Errorf("No Pods found, reconciling")
 	}
 
+	log.Info("checkForImagePullBackOff", "Pods", len(pods.Items))
+
 	for _, pod := range pods.Items {
 		log.Info("checkForImagePullBackOff", "PodName", pod.GetName())
 		reason, found, err := unstructured.NestedString(pod.Object, "status", "containerStatuses", "state", "waiting", "reason")
