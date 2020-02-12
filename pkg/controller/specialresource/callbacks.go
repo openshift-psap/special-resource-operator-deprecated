@@ -127,14 +127,25 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 		return fmt.Errorf("No Pods found, reconciling")
 	}
 
+	var reason string
+
 	for _, pod := range pods.Items {
 		log.Info("checkForImagePullBackOff", "PodName", pod.GetName())
-		reason, found, err := unstructured.NestedStringSlice(pod.Object, "status", "containerStatuses", "state", "waiting", "reason")
-		if !found || err != nil {
-			log.Error(err, "Cannot extract containerstatuses")
-			return fmt.Errorf("Cannot find containerstatuses, reconciling")
+		waitings, found, err := unstructured.NestedSlice(pod.Object, "status", "containerStatuses", "state", "waiting")
+		checkNestedFields(found, err)
+
+		for _, waiting := range waitings {
+			switch waiting := waiting.(type) {
+			case map[string]interface{}:
+				reason, found, err = unstructured.NestedString(waiting, "reason")
+				log.Info("Reason", "reason", reason)
+			default:
+				log.Info("checkForImagePullBackOff", "DEFAULT NOT THE CORRECT TYPE", promURL)
+			}
+			break
 		}
-		if reason[0] == "ImagePullBackOff" || reason[0] == "ErrImagePull" {
+
+		if reason == "ImagePullBackOff" || reason == "ErrImagePull" {
 			log.Info("ImagePullBackOff")
 			annotations := obj.GetAnnotations()
 			if vendor, ok := annotations["specialresource.openshift.io/driver-container-vendor"]; ok {
