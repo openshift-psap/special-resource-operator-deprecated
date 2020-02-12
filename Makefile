@@ -81,6 +81,7 @@ clean:
 	rm -f $(BIN)
 
 local-image:
+	@rm -f special-resource-operator
 	podman build --no-cache -t $(IMAGE) -f $(DOCKERFILE) .
 test:
 	go test ./cmd/... ./pkg/... -coverprofile cover.out

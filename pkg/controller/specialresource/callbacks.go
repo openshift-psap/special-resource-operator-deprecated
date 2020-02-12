@@ -1,7 +1,11 @@
 package specialresource
 
 import (
+	"context"
+	"fmt"
 	"os"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -20,9 +24,9 @@ func SetupCallbacks() error {
 
 	waitFor = make(resourceCallbacks)
 
-	prefixCallback["nvidia-driver-daemonset"] = prefixNVIDIAdriverDaemonset
+	//	prefixCallback["nvidia-driver-daemonset"] = prefixNVIDIAdriverDaemonset
 	prefixCallback["nvidia-grafana-configmap"] = prefixNVIDIAgrafanaConfigMap
-	prefixCallback["nvidia-driver-internal"] = prefixNVIDIABuildConfig
+	//	prefixCallback["nvidia-driver-internal"] = prefixNVIDIABuildConfig
 
 	waitFor["Pod"] = waitForPod
 	waitFor["DaemonSet"] = waitForDaemonSet
@@ -57,21 +61,77 @@ func prefixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecialR
 
 func postfixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 
-	var ok bool
-	todo := ""
 	annotations := obj.GetAnnotations()
-	todo = annotations["callback"]
 
-	if err := waitForResource(obj, r); err != nil {
-		return err
+	if state, ok := annotations["specialresource.openshift.io/state"]; ok && state == "driver-container" {
+		checkForImagePullBackOff(obj, r)
 	}
 
-	if todo, ok = annotations["callback"]; !ok {
+	if wait, ok := annotations["specialresource.openshift.io/wait"]; ok && wait == "true" {
+		if err := waitForResource(obj, r); err != nil {
+			return err
+		}
+	}
+
+	/*
+		todo = annotations["callback"]
+
+		if err := waitForResource(obj, r); err != nil {
+			return err
+		}
+
+		if todo, ok = annotations["callback"]; !ok {
+			return nil
+		}
+
+		if postfix, ok := postfixCallback[todo]; ok {
+			return postfix(obj, r)
+		}
+	*/
+	return nil
+}
+
+func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+
+	if err := waitForDaemonSet(obj, r); err == nil {
 		return nil
 	}
 
-	if postfix, ok := postfixCallback[todo]; ok {
-		return postfix(obj, r)
+	log.Info("checkForImagePullBackOff get pods")
+	// DaemonSet is not coming up, lets check if we have to rebuild
+	pods := &unstructured.UnstructuredList{}
+	pods.SetAPIVersion("v1")
+	pods.SetKind("PodList")
+
+	opts := &client.ListOptions{}
+	opts.InNamespace(r.specialresource.Namespace)
+	opts.MatchingLabels(obj.GetLabels())
+
+	err := r.client.List(context.TODO(), opts, pods)
+	if err != nil {
+		log.Error(err, "Could not get PodList")
+		return err
+	}
+
+	if len(pods.Items) == 0 {
+		return fmt.Errorf("No Pods found, reconciling")
+	}
+
+	for _, pod := range pods.Items {
+		log.Info("checkForImagePullBackOff", "PodName", pod.GetName())
+		reason, found, err := unstructured.NestedString(pod.Object, "status", "containerStatuses", "state", "waiting", "reason")
+		if !found || err != nil {
+			log.Error(err, "Cannot extract containerstatuses")
+			return fmt.Errorf("Cannot find containerstatuses, reconciling")
+		}
+		if reason == "ImagePullBackOff" || reason == "ErrImagePull" {
+			log.Info("ImagePullBackOff")
+			annotations := obj.GetAnnotations()
+			if vendor, ok := annotations["specialresource.openshift.io/driver-container-vendor"]; ok {
+				updateVendor = vendor
+				return fmt.Errorf("ImagePullBackOff need to rebuild %s driver-container", updateVendor)
+			}
+		}
 	}
 
 	return nil

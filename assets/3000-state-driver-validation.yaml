@@ -12,7 +12,8 @@ data:
       exit 1
     fi
 
-    /usr/local/cuda-8.0/samples/0_Simple/vectorAdd/vectorAdd
+    cd /usr/local/cuda-10.2/cuda-samples/Samples/vectorAdd_nvrtc
+    ./vectorAdd_nvrtc
 
     if [ ! $? -eq 0 ]; then
       exit 1
@@ -51,7 +52,7 @@ spec:
         operator: Exists
         effect: NoSchedule
       containers:
-      - image: quay.io/openshift-psap/cuda-vector-add:v0.1
+      - image: nvidia/samples:cuda10.2-vectorAdd
         imagePullPolicy: Always
         name: cuda-vector-add
         command: ["/bin/entrypoint.sh"]
