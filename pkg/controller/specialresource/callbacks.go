@@ -140,7 +140,7 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 				reason, found, err = unstructured.NestedString(waiting, "reason")
 				log.Info("Reason", "reason", reason)
 			default:
-				log.Info("checkForImagePullBackOff", "DEFAULT NOT THE CORRECT TYPE", waiting.(type))
+				log.Info("checkForImagePullBackOff", "DEFAULT NOT THE CORRECT TYPE", waiting)
 			}
 			break
 		}
