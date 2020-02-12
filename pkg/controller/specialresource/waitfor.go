@@ -226,7 +226,7 @@ func waitForBuild(obj *unstructured.Unstructured, r *ReconcileSpecialResource) e
 
 var (
 	retryInterval = time.Second * 3
-	timeout       = time.Second * 30
+	timeout       = time.Second * 15
 )
 
 func waitForResourceAvailability(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
