@@ -64,7 +64,9 @@ func postfixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecial
 	annotations := obj.GetAnnotations()
 
 	if state, ok := annotations["specialresource.openshift.io/state"]; ok && state == "driver-container" {
-		checkForImagePullBackOff(obj, r)
+		if err := checkForImagePullBackOff(obj, r); err != nil {
+			return err
+		}
 	}
 
 	if wait, ok := annotations["specialresource.openshift.io/wait"]; ok && wait == "true" {
@@ -106,12 +108,18 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 	opts := &client.ListOptions{}
 	opts.InNamespace(r.specialresource.Namespace)
 	opts.MatchingLabels(obj.GetLabels())
+	log.Info("checkForImagePullBackOff get pods1")
 
 	err := r.client.List(context.TODO(), opts, pods)
+	log.Info("checkForImagePullBackOff get pods2")
+
 	if err != nil {
+		log.Info("checkForImagePullBackOff get pods3")
+
 		log.Error(err, "Could not get PodList")
 		return err
 	}
+	log.Info("checkForImagePullBackOff get pods4")
 
 	if len(pods.Items) == 0 {
 		return fmt.Errorf("No Pods found, reconciling")
