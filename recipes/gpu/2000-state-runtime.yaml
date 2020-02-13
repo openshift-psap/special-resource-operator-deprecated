@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: nvidia-container-toolkit
+  name: specialresource-runtime-enablement
   namespace: openshift-sro
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: nvidia-container-toolkit
+  name: specialresource-runtime-enablement
   namespace: openshift-sro
 rules:
 - apiGroups:
@@ -22,24 +22,24 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: nvidia-container-toolkit
+  name: specialresource-runtime-enablement
   namespace: openshift-sro
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: nvidia-container-toolkit
+  name: specialresource-runtime-enablement
   namespace: openshift-sro
 subjects:
 - kind: ServiceAccount
-  name: nvidia-container-toolkit
+  name: specialresource-runtime-enablement
   namespace: openshift-sro
 userNames:
-- system:serviceaccount:openshift-sro:nvidia-container-toolkit
+- system:serviceaccount:openshift-sro:specialresource-runtime-enablement
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: nvidia-container-toolkit-entrypoint
+  name: specialresource-runtime-enablement-entrypoint
   namespace: openshift-sro
 data:
   entrypoint.sh: |-
@@ -49,24 +49,56 @@ data:
 
     /work/run.sh /run/nvidia 
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: specialresource-runtime-enablement-init-entrypoint
+  namespace: openshift-sro
+data:
+  entrypoint.sh: |-
+    #!/bin/bash
+    lsmod | grep nvidia
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
-    app: nvidia-container-toolkit-daemonset
-  name: nvidia-container-toolkit-daemonset
+    app: specialresource-runtime-enablement
+  name: specialresource-runtime-enablement
   namespace: openshift-sro
+  annotations:
+    specialresource.openshift.io/state: "runtime-enablement"
+    specialresource.openshift.io/wait: "true"
 spec:
   selector:
     matchLabels:
-      app: nvidia-container-toolkit-daemonset
+      app: specialresource-runtime-enablement
   template:
     metadata:
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ""
       labels:
-        app: nvidia-container-toolkit-daemonset
+        app: specialresource-runtime-enablement
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: specialresource.openshift.io/driver-container
+                operator: In 
+                values:
+                - ready 
+      initContainers: 
+      - image: quay.io/openshift-psap/ubi8-kmod
+        name: specialresource-driver-validation
+        command: ["/bin/entrypoint.sh"]
+        volumeMounts:
+        - name: init-entrypoint
+          mountPath: /bin/entrypoint.sh
+          readOnly: true
+          subPath: entrypoint.sh
+
       containers:
       - image: nvidia/container-toolkit:1.0.0-alpha.3
         command: ["/bin/entrypoint.sh"]
@@ -77,7 +109,7 @@ spec:
         - name: RUNTIME
           value: crio
         imagePullPolicy: IfNotPresent
-        name: nvidia-container-toolkit-ctr
+        name: specialresource-runtime-enablement-ctr
         resources: {}
         securityContext:
           privileged: true
@@ -106,8 +138,8 @@ spec:
         feature.node.kubernetes.io/pci-10de.present: "true"
       restartPolicy: Always
       securityContext: {}
-      serviceAccount: nvidia-container-toolkit
-      serviceAccountName: nvidia-container-toolkit
+      serviceAccount: specialresource-runtime-enablement
+      serviceAccountName: specialresource-runtime-enablement
       tolerations:
       - key: CriticalAddonsOnly
         operator: Exists
@@ -118,7 +150,11 @@ spec:
       - name: entrypoint
         configMap:
           defaultMode: 0700
-          name: nvidia-container-toolkit-entrypoint
+          name: specialresource-runtime-enablement-entrypoint
+      - name: init-entrypoint
+        configMap:
+          defaultMode: 0700
+          name: specialresource-runtime-enablement-init-entrypoint
       - hostPath:
           path: /var/run/docker.sock
           type: ""

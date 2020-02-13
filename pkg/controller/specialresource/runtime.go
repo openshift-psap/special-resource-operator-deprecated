@@ -1,20 +1,18 @@
 package specialresource
 
 import (
-	"fmt"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	errs "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func injectRuntimeInformation(jsonSpec *[]byte) error {
 
 	obj := &unstructured.Unstructured{}
-	if err := obj.UnmarshalJSON(*jsonSpec); err != nil {
-		exitOnError(err, "Cannot unmarshall json spec, check your manifests")
-	}
+
+	err := obj.UnmarshalJSON(*jsonSpec)
+	exitOnError(errs.Wrap(err, "Cannot unmarshall json spec, check your manifests"))
 
 	annotations := obj.GetAnnotations()
 	if inject, ok := annotations["specialresource.openshift.io/inject-runtime-info"]; !ok || inject != "true" {
@@ -49,7 +47,7 @@ func getOperatingSystem() (string, error) {
 		nodeOSver = labels["feature.node.kubernetes.io/system-os_release.VERSION_ID.major"]
 
 		if len(nodeOSrel) == 0 || len(nodeOSver) == 0 {
-			return "", fmt.Errorf("Cannot extract feature.node.kubernetes.io/system-os_release.*, is NFD running? Check node labels")
+			return "", errs.New("Cannot extract feature.node.kubernetes.io/system-os_release.*, is NFD running? Check node labels")
 		}
 		break
 	}
@@ -87,14 +85,13 @@ func getKernelVersion() (string, error) {
 	var ok bool
 	var kernelVersion string
 	// Assuming all nodes are running the same kernel version,
-	// One could easily add driver-kernel-versions for each node.
+	// one could easily add driver-kernel-versions for each node.
 	for _, node := range node.list.Items {
 		labels := node.GetLabels()
 
 		// We only need to check for the key, the value is available if the key is there
 		if kernelVersion, ok = labels["feature.node.kubernetes.io/kernel-version.full"]; !ok {
-			return "", errors.NewNotFound(schema.GroupResource{Group: "Node", Resource: "Label"},
-				"feature.node.kubernetes.io/kernel-version.full")
+			return "", errs.New("Label feature.node.kubernetes.io/kernel-version.full not found is NFD running? Check node labels")
 		}
 		break
 	}

@@ -44,7 +44,18 @@ metadata:
 data:
   entrypoint.sh: |-
     #!/bin/bash
-    nvidia-driver init
+    LOG_FILE=/tmp/nvidia-driver-log
+
+    nvidia-driver init | tee $LOG_FILE 2>&1 &
+
+    while [ $? -ne 0 ]
+    do 
+            grep  "+ wait [0-9]*" $LOG_FILE
+    done 
+
+    touch /tmp/nvidia-driver-ready
+
+    wait
 ---
 # Please edit the object below. Lines beginning with a '#' will be ignored,
 # and an empty file will abort the edit. If an error occurs while saving this file will be
@@ -106,8 +117,10 @@ metadata:
   annotations:
     openshift.io/scc: specialresource-driver-container-nvidia
     specialresource.openshift.io/wait: "true"
+    specialresrouce.openshift.io/wait-for-logs: "\\+ wait \\d+"
     specialresource.openshift.io/inject-runtime-info: "true"
     specialresource.openshift.io/state: "driver-container"
+
 spec:
   selector:
     matchLabels:
@@ -148,6 +161,13 @@ spec:
             mountPath: /bin/entrypoint.sh
             readOnly: true
             subPath: entrypoint.sh
+        livenessProbe: 
+          exec: 
+            command:
+            - cat 
+            - /tmp/nvidia-driver-ready 
+          failureThreshold: 60
+          periodSeconds: 10
       volumes:
         - name: run-nvidia
           hostPath:

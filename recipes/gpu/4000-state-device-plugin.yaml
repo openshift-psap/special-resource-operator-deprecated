@@ -1,13 +1,34 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: specialresource-driver-validation-entrypoint
+  namespace: openshift-sro
+data:
+  entrypoint.sh: |-
+    #!/bin/bash
+    NUM_GPUS=$(nvidia-smi -L | wc -l)
+    if [ $NUM_GPUS -eq 0 ]; then
+      echo "ERROR No GPUs found"
+      exit 1
+    fi
+
+    cd /usr/local/cuda-10.2/cuda-samples/Samples/vectorAdd_nvrtc
+    ./vectorAdd_nvrtc
+
+    if [ ! $? -eq 0 ]; then
+      exit 1
+    fi
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: nvidia-device-plugin
+  name: specialresource-device-plugin
   namespace: openshift-sro
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: nvidia-device-plugin
+  name: specialresource-device-plugin
   namespace: openshift-sro
 rules:
 - apiGroups:
@@ -22,34 +43,35 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: nvidia-device-plugin
+  name: specialresource-device-plugin
   namespace: openshift-sro
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: nvidia-device-plugin
+  name: specialresource-device-plugin
   namespace: openshift-sro
 subjects:
 - kind: ServiceAccount
-  name: nvidia-device-plugin
+  name: specialresource-device-plugin
   namespace: openshift-sro
 userNames:
-- system:serviceaccount:openshift-sro-operator:nvidia-device-plugin
+- system:serviceaccount:openshift-sro-operator:specialresource-device-plugin
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
-    app: nvidia-device-plugin-daemonset
-  name: nvidia-device-plugin-daemonset
+    app: specialresource-device-plugin
+  name: specialresource-device-plugin
   namespace: openshift-sro
   annotations:
     openshift.io/scc: hostmount-anyuid
-    callback: nvidia-device-plugin-daemonset
+    specialresource.openshift.io/state: "device-plugin"
+    specialresource.openshift.io/wait: "true"
 spec:
   selector:
     matchLabels:
-      app: nvidia-device-plugin-daemonset
+      app: specialresource-device-plugin
   template:
     metadata:
       # Mark this pod as a critical add-on; when enabled, the critical add-on scheduler
@@ -58,14 +80,14 @@ spec:
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ""
       labels:
-        app: nvidia-device-plugin-daemonset
+        app: specialresource-device-plugin
     spec:
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: specialresource.openshift.io/driver-validation
+              - key: specialresource.openshift.io/runtime-enablement
                 operator: In 
                 values:
                 - ready 
@@ -78,10 +100,24 @@ spec:
       - key: nvidia.com/gpu
         operator: Exists
         effect: NoSchedule
-      serviceAccount: nvidia-device-plugin
+      serviceAccount: specialresource-device-plugin
+      initContainers:
+      - image: nvidia/samples:cuda10.2-vectorAdd
+        imagePullPolicy: Always
+        name: cuda-vector-add
+        command: ["/bin/entrypoint.sh"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        volumeMounts:
+        - name: init-entrypoint
+          mountPath: /bin/entrypoint.sh
+          readOnly: true
+          subPath: entrypoint.sh
       containers:
       - image: nvidia/k8s-device-plugin:1.11 
-        name: nvidia-device-plugin-ctr
+        name: specialresource-device-plugin-ctr
         securityContext:
           privileged: true
         env:
@@ -94,6 +130,11 @@ spec:
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
+        - name: init-entrypoint
+          configMap:
+            defaultMode: 0700
+            name: specialresource-driver-validation-entrypoint
+
       nodeSelector:
         node-role.kubernetes.io/worker: ""
         feature.node.kubernetes.io/pci-10de.present: "true"

@@ -1,13 +1,33 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: specialresource-device-plugin-validation-entrypoint
+  namespace: openshift-sro
+data:
+  entrypoint.sh: |-
+    #!/bin/bash
+    NUM_GPUS=$(nvidia-smi -L | wc -l)
+    if [ $NUM_GPUS -eq 0 ]; then
+      echo "ERROR No GPUs found"
+      exit 1
+    fi
+
+    /usr/local/cuda-8.0/samples/0_Simple/vectorAdd/vectorAdd
+
+    if [ ! $? -eq 0 ]; then 
+      exit 1
+    fi
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: nvidia-dcgm-exporter
+  name: specialresource-metrics-exporter
   namespace: openshift-sro
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: nvidia-dcgm-exporter
+  name: specialresource-metrics-exporter
   namespace: openshift-sro
 rules:
 - apiGroups:
@@ -22,17 +42,17 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: nvidia-dcgm-exporter
+  name: specialresource-metrics-exporter
   namespace: openshift-sro
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: nvidia-dcgm-exporter
+  name: specialresource-metrics-exporter
 subjects:
 - kind: ServiceAccount
-  name: nvidia-dcgm-exporter
+  name: specialresource-metrics-exporter
 userNames:
-- system:serviceaccount:openshift-sro:nvidia-dcgm-exporter
+- system:serviceaccount:openshift-sro:specialresource-metrics-exporter
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -69,12 +89,12 @@ apiVersion: v1
 kind: Service
 metadata:
   namespace: openshift-sro
-  name: nvidia-dcgm-exporter
+  name: specialresource-metrics-exporter
   labels:
-    app: nvidia-dcgm-exporter
+    app: specialresource-metrics-exporter
 spec:
   selector:
-    app: nvidia-dcgm-exporter
+    app: specialresource-metrics-exporter
   type: ClusterIP
   ports:
   - name: dcgm
@@ -86,7 +106,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   namespace: openshift-sro
-  name: nvidia-dcgm-exporter
+  name: specialresource-metrics-exporter
 spec:
   endpoints:
   - port: dcgm 
@@ -96,7 +116,7 @@ spec:
     - openshift-sro
   selector:
     matchLabels:
-      app: nvidia-dcgm-exporter
+      app: specialresource-metrics-exporter
 ---
 # Node exporter collecting only GPU metrics from dcgm-exporter.
 # Except textfile collector, all other collectors that are enabled by default are disabled.
@@ -105,25 +125,28 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels: 
-    app: nvidia-dcgm-exporter
-  name: nvidia-dcgm-exporter
+    app: specialresource-metrics-exporter
+  name: specialresource-metrics-exporter
   namespace: openshift-sro
+  annotations: 
+    specialresource.openshift.io/state: "device-monitoring"
+    specialresource.openshift.io/wait: "true"
 spec:
   selector:
     matchLabels:
-      app: nvidia-dcgm-exporter
+      app: specialresource-metrics-exporter
   template:
     metadata:
       labels:
-        app: nvidia-dcgm-exporter
-      name: nvidia-dcgm-exporter
+        app: specialresource-metrics-exporter
+      name: specialresource-metrics-exporter
     spec:
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: specialresource.openshift.io/device-validation
+              - key: specialresource.openshift.io/device-plugin
                 operator: In 
                 values:
                 - ready 
@@ -132,8 +155,25 @@ spec:
       - key: nvidia.com/gpu
         operator: Exists
         effect: NoSchedule
-      serviceAccount: nvidia-dcgm-exporter
-      serviceAccountName: nvidia-dcgm-exporter
+      serviceAccount: specialresource-metrics-exporter
+      serviceAccountName: specialresource-metrics-exporter
+      initContainers:
+      - image: quay.io/openshift-psap/cuda-vector-add:v0.1
+        imagePullPolicy: Always
+        name: cuda-vector-add
+        command: ["/bin/entrypoint.sh"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          limits:
+            nvidia.com/gpu:  # requesting all GPUs
+        volumeMounts:
+        - name: init-entrypoint
+          mountPath: /bin/entrypoint.sh
+          readOnly: true
+          subPath: entrypoint.sh
       containers:
       - image: quay.io/prometheus/node-exporter:v0.16.0
         name: node-exporter
@@ -193,7 +233,7 @@ spec:
           readOnly: true
           mountPath: /run/prometheus
       - image: nvidia/dcgm-exporter:1.4.6
-        name: nvidia-dcgm-exporter
+        name: specialresource-metrics-exporter
         securityContext:
           runAsNonRoot: false
           runAsUser: 0
@@ -214,6 +254,11 @@ spec:
       - name: collector-textfiles
         emptyDir:
           medium: Memory
+      - name: init-entrypoint
+        configMap:
+          defaultMode: 0700
+          name: specialresource-device-plugin-validation-entrypoint
+
       nodeSelector:
         node-role.kubernetes.io/worker: ""
         feature.node.kubernetes.io/pci-10de.present: "true"

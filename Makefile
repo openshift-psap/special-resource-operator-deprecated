@@ -9,13 +9,16 @@ DEPLOY_OBJECTS  = namespace.yaml service_account.yaml role.yaml role_binding.yam
 DEPLOY_CRD      = crds/sro.openshift.io_specialresources_crd.yaml 
 DEPLOY_CR       = crds/sro_v1alpha1_specialresource_cr.yaml
 
+SPECIALRESOURCE ?= gpu
+
 PACKAGE         = github.com/openshift-psap/special-resource-operator
 MAIN_PACKAGE    = $(PACKAGE)/cmd/manager
 
 DOCKERFILE      = Dockerfile
 ENVVAR          = GOOS=linux CGO_ENABLED=0
 GOOS            = linux
-GO_BUILD_RECIPE = GOOS=$(GOOS) go build -mod=vendor -o $(BIN) $(MAIN_PACKAGE)
+GO111MODULE     = auto
+GO_BUILD_RECIPE = GO111MODULE=$(GO111MODULE) GOOS=$(GOOS) go build -mod=vendor -o $(BIN) $(MAIN_PACKAGE)
 
 TEST_RESOURCES  = $(shell mktemp -d)/test-init.yaml
 
@@ -53,8 +56,10 @@ deploy-objects: deploy-crd
 		$(TEMPLATE_CMD) deploy/$$obj | kubectl apply -f - ; \
 	done 
 
+
 deploy: deploy-objects
-	kubectl create configmap special-resource-operator-states -n $(NAMESPACE) --from-file=assets/
+	-kubectl delete configmap special-resource-operator-states -n $(NAMESPACE) 
+	kubectl create configmap special-resource-operator-states -n $(NAMESPACE) --from-file=recipes/$(SPECIALRESOURCE)
 	@${TEMPLATE_CMD} deploy/$(DEPLOY_CR) | kubectl apply -f -
 
 undeploy:

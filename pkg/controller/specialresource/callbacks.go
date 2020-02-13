@@ -13,25 +13,19 @@ import (
 type resourceCallbacks map[string]func(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error
 
 var prefixCallback resourceCallbacks
-var postfixCallback resourceCallbacks
 var waitFor resourceCallbacks
 
 // SetupCallbacks preassign callbacks for manipulating and handling of resources
 func SetupCallbacks() error {
 
 	prefixCallback = make(resourceCallbacks)
-	postfixCallback = make(resourceCallbacks)
 
 	waitFor = make(resourceCallbacks)
-
-	//	prefixCallback["nvidia-driver-daemonset"] = prefixNVIDIAdriverDaemonset
 	prefixCallback["nvidia-grafana-configmap"] = prefixNVIDIAgrafanaConfigMap
-	//	prefixCallback["nvidia-driver-internal"] = prefixNVIDIABuildConfig
 
 	waitFor["Pod"] = waitForPod
 	waitFor["DaemonSet"] = waitForDaemonSet
 	waitFor["BuildConfig"] = waitForBuild
-	waitFor["nvidia-driver-daemonset"] = waitForDaemonSetLogs
 
 	return nil
 }
@@ -43,7 +37,7 @@ func checkNestedFields(found bool, err error) {
 	}
 }
 
-func prefixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+func beforeCRUDhooks(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 
 	var ok bool
 	todo := ""
@@ -59,7 +53,7 @@ func prefixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecialR
 	return nil
 }
 
-func postfixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+func afterCRUDhooks(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 
 	annotations := obj.GetAnnotations()
 
@@ -75,22 +69,15 @@ func postfixResourceCallback(obj *unstructured.Unstructured, r *ReconcileSpecial
 		}
 	}
 
-	/*
-		todo = annotations["callback"]
-
-		if err := waitForResource(obj, r); err != nil {
+	if pattern, ok := annotations["specialresrouce.openshift.io/wait-for-logs"]; ok && len(pattern) > 0 {
+		if err := waitForDaemonSetLogs(obj, r, pattern); err != nil {
 			return err
 		}
+	}
 
-		if todo, ok = annotations["callback"]; !ok {
-			return nil
-		}
-
-		if postfix, ok := postfixCallback[todo]; ok {
-			return postfix(obj, r)
-		}
-	*/
-	return nil
+	// If resource available, label the nodes according to the current state
+	// if e.g driver-container ready -> specialresource.openshift.io/driver-container:ready
+	return labelNodesAccordingToState(obj, r)
 }
 
 func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
@@ -115,7 +102,7 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 	opts := &client.ListOptions{}
 	opts.InNamespace(r.specialresource.Namespace)
 	opts.MatchingLabels(find)
-	log.Info("checkForImagePullBackOff get pods1")
+	log.Info("checkForImagePullBackOff get PodList")
 
 	err := r.client.List(context.TODO(), opts, pods)
 	if err != nil {
