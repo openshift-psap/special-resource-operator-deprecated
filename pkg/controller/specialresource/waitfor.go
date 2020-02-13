@@ -225,8 +225,8 @@ func waitForBuild(obj *unstructured.Unstructured, r *ReconcileSpecialResource) e
 // WAIT FOR RESOURCES -- other file?
 
 var (
-	retryInterval = time.Second * 3
-	timeout       = time.Second * 15
+	retryInterval = time.Second * 2
+	timeout       = time.Second * 6
 )
 
 func waitForResourceAvailability(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
