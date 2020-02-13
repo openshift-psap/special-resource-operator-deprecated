@@ -131,6 +131,7 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 
 	for _, pod := range pods.Items {
 		log.Info("checkForImagePullBackOff", "PodName", pod.GetName())
+
 		containerStatuses, found, err := unstructured.NestedSlice(pod.Object, "status", "containerStatuses")
 		checkNestedFields(found, err)
 
@@ -140,7 +141,7 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 				reason, found, err = unstructured.NestedString(containerStatus, "state", "waiting", "reason")
 				log.Info("Reason", "reason", reason)
 			default:
-				log.Info("checkForImagePullBackOff", "DEFAULT NOT THE CORRECT TYPE", waiting)
+				log.Info("checkForImagePullBackOff", "DEFAULT NOT THE CORRECT TYPE", containerStatus)
 			}
 			break
 		}
