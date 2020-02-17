@@ -24,12 +24,13 @@ BIN=$(lastword $(subst /, ,$(PACKAGE)))
 
 GOFMT_CHECK=$(shell find . -not \( \( -wholename './.*' -o -wholename '*/vendor/*' \) -prune \) -name '*.go' | sort -u | xargs gofmt -s -l)
 
-
 all: build
-
 
 build:
 	$(GO_BUILD_RECIPE)
+
+test: verify
+	go test ./cmd/... ./pkg/... -coverprofile cover.out
 
 test-e2e: 
 	@${TEMPLATE_CMD} manifests/service_account.yaml > $(TEST_RESOURCES)
@@ -82,11 +83,8 @@ clean:
 
 local-image:
 	podman build --no-cache -t $(IMAGE) -f $(DOCKERFILE) .
-test:
-	go test ./cmd/... ./pkg/... -coverprofile cover.out
 
 local-image-push:
 	podman push $(IMAGE) 
 
-.PHONY: all build generate verify verify-gofmt clean local-image local-image-push $(DEPLOY_CRDS) grafana
-
+.PHONY: all build generate verify verify-gofmt clean test test-e2e local-image local-image-push $(DEPLOY_CRDS) grafana
