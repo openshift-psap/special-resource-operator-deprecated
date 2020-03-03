@@ -15,11 +15,10 @@ MAIN_PACKAGE    = $(PACKAGE)/cmd/manager
 DOCKERFILE      = Dockerfile
 ENVVAR          = GOOS=linux CGO_ENABLED=0
 GOOS            = linux
-GO111MODULE=on
-GO_BUILD_RECIPE =GO111MODULE=$(GO111MODULE) GOOS=$(GOOS) go build -mod=vendor -o $(BIN) $(MAIN_PACKAGE)
+GO111MODULE     = auto
+GO_BUILD_RECIPE = GO111MODULE=$(GO111MODULE) GOOS=$(GOOS) go build -mod=vendor -o $(BIN) $(MAIN_PACKAGE)
 
 TEST_RESOURCES  = $(shell mktemp -d)/test-init.yaml
-
 
 BIN=$(lastword $(subst /, ,$(PACKAGE)))
 
