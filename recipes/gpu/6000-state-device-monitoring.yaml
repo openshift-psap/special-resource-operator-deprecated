@@ -131,6 +131,7 @@ metadata:
   annotations: 
     specialresource.openshift.io/state: "device-monitoring"
     specialresource.openshift.io/wait: "true"
+    specialresource.openshift.io/inject-runtime-info: "true"
 spec:
   selector:
     matchLabels:
@@ -261,7 +262,7 @@ spec:
 
       nodeSelector:
         node-role.kubernetes.io/worker: ""
-        feature.node.kubernetes.io/pci-10de.present: "true"
+        SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE: "true"
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule

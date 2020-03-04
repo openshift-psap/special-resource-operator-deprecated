@@ -69,6 +69,7 @@ metadata:
   annotations:
     specialresource.openshift.io/state: "runtime-enablement"
     specialresource.openshift.io/wait: "true"
+    specialresource.openshift.io/inject-runtime-info: "true"
 spec:
   selector:
     matchLabels:
@@ -135,7 +136,7 @@ spec:
           name: crio-hooks
       hostPID: true
       nodeSelector:
-        feature.node.kubernetes.io/pci-10de.present: "true"
+        SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE: "true"
       restartPolicy: Always
       securityContext: {}
       serviceAccount: specialresource-runtime-enablement

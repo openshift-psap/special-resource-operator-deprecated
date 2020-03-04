@@ -68,6 +68,7 @@ metadata:
     openshift.io/scc: hostmount-anyuid
     specialresource.openshift.io/state: "device-plugin"
     specialresource.openshift.io/wait: "true"
+    specialresource.openshift.io/inject-runtime-info: "true"
 spec:
   selector:
     matchLabels:
@@ -137,4 +138,4 @@ spec:
 
       nodeSelector:
         node-role.kubernetes.io/worker: ""
-        feature.node.kubernetes.io/pci-10de.present: "true"
+        SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE: "true"

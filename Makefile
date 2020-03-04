@@ -58,9 +58,14 @@ deploy-objects: deploy-crd
 
 
 deploy: deploy-objects
+	@${TEMPLATE_CMD} deploy/$(DEPLOY_CR) | kubectl apply -f -
+
+
+gpu: deploy 
 	-kubectl delete configmap special-resource-operator-states -n $(NAMESPACE) 
 	kubectl create configmap special-resource-operator-states -n $(NAMESPACE) --from-file=recipes/$(SPECIALRESOURCE)
-	@${TEMPLATE_CMD} deploy/$(DEPLOY_CR) | kubectl apply -f -
+	kubectl patch configmap special-resource-operator-states -n $(NAMESPACE)  --patch '{ "metadata": { "annotations": { "specialresource.openshift.io/nfd": "feature.node.kubernetes.io/pci-10de.present" } } }'
+
 
 undeploy:
 	@for obj in $(DEPLOY_CRD) $(DEPLOY_CR) $(DEPLOY_OBJECTS); do  \

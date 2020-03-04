@@ -17,7 +17,11 @@ metadata:
   annotations:
     specialresource.openshift.io/wait: "true"
     specialresource.openshift.io/inject-runtime-info: "true"
+    specialresource.openshift.io/driver-container-vendor: SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE    
 spec:
+  nodeSelector:
+    node-role.kubernetes.io/worker: ""
+    SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE: "true"
   runPolicy: "Serial"
   triggers:
     - type: "ConfigChange"

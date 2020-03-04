@@ -110,8 +110,6 @@ kind: DaemonSet
 metadata:
   labels:
     app: specialresource-driver-container-nvidia
-    specialresource.openshift.io/driver-container-vendor: "NVIDIA"    
-
   name: specialresource-driver-container-nvidia
   namespace: openshift-sro
   annotations:
@@ -120,7 +118,7 @@ metadata:
     specialresrouce.openshift.io/wait-for-logs: "\\+ wait \\d+"
     specialresource.openshift.io/inject-runtime-info: "true"
     specialresource.openshift.io/state: "driver-container"
-
+    specialresource.openshift.io/driver-container-vendor: SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE    
 spec:
   selector:
     matchLabels:
@@ -178,5 +176,5 @@ spec:
             name: specialresource-driver-container-nvidia-entrypoint
       nodeSelector:
         node-role.kubernetes.io/worker: ""
-        feature.node.kubernetes.io/pci-10de.present: "true"
+        SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE: "true"
         feature.node.kubernetes.io/kernel-version.full: "SPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION"

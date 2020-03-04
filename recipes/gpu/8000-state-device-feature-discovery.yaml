@@ -43,6 +43,7 @@ metadata:
   name: specialresource-feature-discovery
   annotations:
     specialresource.openshift.io/wait: "true"
+    specialresource.openshift.io/inject-runtime-info: "true"
   labels:
     app.kubernetes.io/name: specialresource-feature-discovery
     app.kubernetes.io/version: 1.0.0-alpha
@@ -101,4 +102,4 @@ spec:
             path: "/sys/class/dmi/id/product_name"
       nodeSelector:
         node-role.kubernetes.io/worker: ""
-        feature.node.kubernetes.io/pci-10de.present: "true" # NVIDIA GPU
+        SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE: "true" 

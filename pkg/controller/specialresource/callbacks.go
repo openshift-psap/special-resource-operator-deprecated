@@ -134,12 +134,16 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 		}
 
 		if reason == "ImagePullBackOff" || reason == "ErrImagePull" {
-			labels := obj.GetLabels()
-			if vendor, ok := labels["specialresource.openshift.io/driver-container-vendor"]; ok {
+			annotations := obj.GetAnnotations()
+			if vendor, ok := annotations["specialresource.openshift.io/driver-container-vendor"]; ok {
 				updateVendor = vendor
 				return fmt.Errorf("ImagePullBackOff need to rebuild %s driver-container", updateVendor)
 			}
 		}
+
+		log.Info("Unsetting updateVendor, Pods not in ImagePullBackOff or ErrImagePull")
+		updateVendor = ""
+		return nil
 	}
 
 	return nil

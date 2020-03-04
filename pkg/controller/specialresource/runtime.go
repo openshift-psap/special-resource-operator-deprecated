@@ -25,11 +25,13 @@ func injectRuntimeInformation(jsonSpec *[]byte) error {
 	log.Info("Runtime Information", "kernelVersion", kernelVersion)
 	log.Info("Runtime Information", "clusterVersion", clusterVersion)
 	log.Info("Runtime Information", "updateVendor", updateVendor)
+	log.Info("Runtime Information", "nodeFeature", nodeFeature)
 
 	pattern := strings.NewReplacer(
 		"SPECIALRESOURCE.OPENSHIFT.IO.OPERATINGSYSTEM", operatingSystem,
 		"SPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION", kernelVersion,
-		"SPECIALRESOURCE.OPENSHIFT.IO.CLUSTERVERSION", clusterVersion)
+		"SPECIALRESOURCE.OPENSHIFT.IO.CLUSTERVERSION", clusterVersion,
+		"SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE", nodeFeature)
 
 	*jsonSpec = []byte(pattern.Replace(spec))
 	return nil

@@ -42,6 +42,7 @@ var (
 	kernelVersion   = ""
 	clusterVersion  = ""
 	updateVendor    = ""
+	nodeFeature     = ""
 )
 
 // AddKubeClient Add a native non-caching client for advanced CRUD operations
@@ -108,7 +109,7 @@ func cacheNodes(r *ReconcileSpecialResource, force bool) (*unstructured.Unstruct
 	node.list.SetKind("NodeList")
 
 	opts := &client.ListOptions{}
-	opts.SetLabelSelector("feature.node.kubernetes.io/pci-10de.present=true")
+	opts.SetLabelSelector(nodeFeature + "=true")
 
 	err := r.client.List(context.TODO(), opts, node.list)
 	if err != nil {
@@ -130,8 +131,15 @@ func getSROstatesCM(r *ReconcileSpecialResource) (map[string]interface{}, []stri
 	err := r.client.Get(context.TODO(), types.NamespacedName{Namespace: ns, Name: "special-resource-operator-states"}, cm)
 
 	if apierrors.IsNotFound(err) {
-		log.Info("ConfigMap special-resource-states not found, see README and create the states")
-		return nil, nil, nil
+		return nil, nil, errs.New("ConfigMap special-resource-states not found, see README and create the states")
+	}
+
+	annotations := cm.GetAnnotations()
+	if nfd, ok := annotations["specialresource.openshift.io/nfd"]; ok && len(nfd) > 0 {
+		nodeFeature = nfd
+		log.Info("NFD", "nodeFeature", nodeFeature)
+	} else {
+		return nil, nil, errs.New("ConfigMap has no specialresource.openshift.io/nfd annotation cannot determine the device")
 	}
 
 	manifests, found, err := unstructured.NestedMap(cm.Object, "data")
@@ -151,7 +159,13 @@ func getSROstatesCM(r *ReconcileSpecialResource) (map[string]interface{}, []stri
 // ReconcileClusterResources Reconcile cluster resources
 func ReconcileClusterResources(r *ReconcileSpecialResource) error {
 
-	manifests, states, err := getSROstatesCM(r)
+	var manifests map[string]interface{}
+	var states []string
+	var err error
+
+	if manifests, states, err = getSROstatesCM(r); err != nil {
+		return errs.Wrap(err, "Error reconciling SRO states")
+	}
 
 	node.list, err = cacheNodes(r, false)
 	exitOnError(errs.Wrap(err, "Failed to cache Nodes"))
@@ -198,7 +212,9 @@ func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 		exitOnError(errs.Wrap(err, "Cannot unmarshall json spec, check your manifests"))
 
 		// We are only building a driver-container if we cannot pull the image
-		if obj.GetKind() == "BuildConfig" && updateVendor == "" {
+		// We are asuming that vendors provide pre compiled DriverContainers
+		// If err == nil, build a new container, if err != nil skip it
+		if err := rebuildDriverContainer(obj, r); err != nil {
 			log.Info("Skpping building driver-container", "Name", obj.GetName())
 			return nil
 		}
@@ -241,7 +257,7 @@ func needToUpdateResourceVersion(kind string) bool {
 	return false
 }
 
-func updateResource(req *unstructured.Unstructured, found *unstructured.Unstructured) error {
+func updateResourceVersion(req *unstructured.Unstructured, found *unstructured.Unstructured) error {
 
 	kind := found.GetKind()
 
@@ -296,7 +312,7 @@ func CRUD(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 
 	// ServiceAccounts cannot be updated, maybe delete and create?
 	if obj.GetKind() == "ServiceAccount" {
-		logger.Info("TODO: Found, not updating")
+		logger.Info("TODO: Found, not updating, does not work, why? Secret accumulation?")
 		return nil
 	}
 
@@ -304,23 +320,34 @@ func CRUD(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 	required := obj.DeepCopy()
 
 	// required.ResourceVersion = found.ResourceVersion
-	if err := updateResource(required, found); err != nil {
+	if err := updateResourceVersion(required, found); err != nil {
 		return errs.Wrap(err, "Couldn't Update ResourceVersion")
-	}
-
-	// BuildConfig are currently not triggered by an update need to delete first
-	if obj.GetKind() == "BuildConfig" {
-
-		labels := obj.GetLabels()
-		if vendor, ok := labels["specialresource.openshift.io/driver-container-vendor"]; ok && vendor == updateVendor {
-			err := r.client.Delete(context.TODO(), obj)
-			exitOnError(errs.Wrap(err, "Couldn't Delete BuildConfig"))
-		}
-		logger.Info("TODO: BuildConfig not triggered due to Update, reconciling")
 	}
 
 	if err := r.client.Update(context.TODO(), required); err != nil {
 		return errs.Wrap(err, "Couldn't Update Resource")
+	}
+
+	return nil
+}
+
+func rebuildDriverContainer(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+
+	logger := log.WithValues("Kind", obj.GetKind(), "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+	// BuildConfig are currently not triggered by an update need to delete first
+	if obj.GetKind() == "BuildConfig" {
+		annotations := obj.GetAnnotations()
+		if vendor, ok := annotations["specialresource.openshift.io/driver-container-vendor"]; ok {
+			logger.Info("driver-container-vendor", "vendor", vendor)
+			if vendor == updateVendor {
+				logger.Info("vendor == updateVendor", "vendor", vendor, "updateVendor", updateVendor)
+				return nil
+			}
+			logger.Info("vendor != updateVendor", "vendor", vendor, "updateVendor", updateVendor)
+			return errs.New("vendor != updateVendor")
+		}
+		logger.Info("No label driver-container-vendor found")
+		return errs.New("No driver-container-vendor found, nor vendor == updateVendor")
 	}
 
 	return nil
