@@ -15,6 +15,8 @@ var stateLabels = map[string]map[string]string{
 	"device-monitoring":  {"specialresource.openshift.io/device-monitoring": "ready"},
 }
 
+// If resource available, label the nodes according to the current state
+// if e.g driver-container ready -> specialresource.openshift.io/driver-container:ready
 func labelNodesAccordingToState(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 
 	if obj.GetKind() != "DaemonSet" {
