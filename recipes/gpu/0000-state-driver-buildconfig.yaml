@@ -1,0 +1,43 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    app: specialresource-driver-container-nvidia
+  annotations:
+    specialresource.openshift.io/inject-runtime-info: "true"
+  name: specialresource-driver-container-nvidia
+spec: {}
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  labels:
+    app: specialresource-driver-container-nvidia 
+  name: specialresource-driver-container-nvidia
+  annotations:
+    specialresource.openshift.io/wait: "true"
+    specialresource.openshift.io/inject-runtime-info: "true"
+    specialresource.openshift.io/driver-container-vendor: SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE    
+spec:
+  nodeSelector:
+    node-role.kubernetes.io/worker: ""
+    SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE: "true"
+  runPolicy: "Serial"
+  triggers:
+    - type: "ConfigChange"
+    - type: "ImageChange"
+  source:
+    git:
+      ref: master
+      uri: https://gitlab.com/nvidia/driver.git
+    contextDir: SPECIALRESOURCE.OPENSHIFT.IO.OPERATINGSYSTEM
+    type: Git
+  strategy:
+    dockerStrategy:
+      buildArgs:
+        - name: "DRIVER_VERSION"
+          value: "440.33.01"
+  output:
+    to:
+      kind: ImageStreamTag
+      name: specialresource-driver-container-nvidia:vSPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION

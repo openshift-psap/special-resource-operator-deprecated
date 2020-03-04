@@ -2,10 +2,11 @@ package specialresource
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+
+	errs "github.com/pkg/errors"
 
 	monitoringV1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/openshift-psap/special-resource-operator/pkg/yamlutil"
@@ -13,6 +14,7 @@ import (
 	imageV1 "github.com/openshift/api/image/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	secv1 "github.com/openshift/api/security/v1"
+	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,6 +38,11 @@ var (
 		list:  &unstructured.UnstructuredList{},
 		count: 0xDEADBEEF,
 	}
+	operatingSystem = ""
+	kernelVersion   = ""
+	clusterVersion  = ""
+	updateVendor    = ""
+	nodeFeature     = ""
 )
 
 // AddKubeClient Add a native non-caching client for advanced CRUD operations
@@ -81,9 +88,9 @@ func filePathWalkDir(root string) ([]string, error) {
 	return files, err
 }
 
-func exitOnError(err error, msg string) {
+func exitOnError(err error) {
 	if err != nil {
-		log.Error(err, msg)
+		log.Info("Exiting On Error", "error", err)
 		os.Exit(1)
 	}
 }
@@ -102,11 +109,11 @@ func cacheNodes(r *ReconcileSpecialResource, force bool) (*unstructured.Unstruct
 	node.list.SetKind("NodeList")
 
 	opts := &client.ListOptions{}
-	opts.SetLabelSelector("feature.node.kubernetes.io/pci-10de.present=true")
+	opts.SetLabelSelector(nodeFeature + "=true")
 
 	err := r.client.List(context.TODO(), opts, node.list)
 	if err != nil {
-		log.Error(err, "Could not get NodeList")
+		return nil, errors.Wrap(err, "Client cannot get NodeList")
 	}
 
 	return node.list, err
@@ -120,11 +127,19 @@ func getSROstatesCM(r *ReconcileSpecialResource) (map[string]interface{}, []stri
 	cm.SetAPIVersion("v1")
 	cm.SetKind("ConfigMap")
 
-	err := r.client.Get(context.TODO(), types.NamespacedName{Namespace: r.specialresource.GetNamespace(), Name: "special-resource-operator-states"}, cm)
+	ns := r.specialresource.GetNamespace()
+	err := r.client.Get(context.TODO(), types.NamespacedName{Namespace: ns, Name: "special-resource-operator-states"}, cm)
 
 	if apierrors.IsNotFound(err) {
-		log.Info("ConfigMap special-resource-states not found, see README and create the states")
-		return nil, nil, nil
+		return nil, nil, errs.New("ConfigMap special-resource-states not found, see README and create the states")
+	}
+
+	annotations := cm.GetAnnotations()
+	if nfd, ok := annotations["specialresource.openshift.io/nfd"]; ok && len(nfd) > 0 {
+		nodeFeature = nfd
+		log.Info("NFD", "nodeFeature", nodeFeature)
+	} else {
+		return nil, nil, errs.New("ConfigMap has no specialresource.openshift.io/nfd annotation cannot determine the device")
 	}
 
 	manifests, found, err := unstructured.NestedMap(cm.Object, "data")
@@ -144,17 +159,32 @@ func getSROstatesCM(r *ReconcileSpecialResource) (map[string]interface{}, []stri
 // ReconcileClusterResources Reconcile cluster resources
 func ReconcileClusterResources(r *ReconcileSpecialResource) error {
 
-	manifests, states, err := getSROstatesCM(r)
+	var manifests map[string]interface{}
+	var states []string
+	var err error
+
+	if manifests, states, err = getSROstatesCM(r); err != nil {
+		return errs.Wrap(err, "Error reconciling SRO states")
+	}
 
 	node.list, err = cacheNodes(r, false)
-	exitOnError(err, "Cannot get Nodes")
+	exitOnError(errs.Wrap(err, "Failed to cache Nodes"))
+
+	operatingSystem, err = getOperatingSystem()
+	exitOnError(errs.Wrap(err, "Failed to get operating system"))
+
+	kernelVersion, err = getKernelVersion()
+	exitOnError(errs.Wrap(err, "Failed to get kernel version"))
+
+	clusterVersion, err = getClusterVersion()
+	exitOnError(errs.Wrap(err, "Failed to get cluster version"))
 
 	for _, state := range states {
 
 		log.Info("Executing", "State", state)
 		namespacedYAML := []byte(manifests[state].(string))
 		if err := createFromYAML(namespacedYAML, r); err != nil {
-			return err
+			return errs.Wrap(err, "Failed to create resources")
 		}
 	}
 
@@ -172,32 +202,42 @@ func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 		obj := &unstructured.Unstructured{}
 		jsonSpec, err := yaml.YAMLToJSON(yamlSpec)
 		if err != nil {
-			return fmt.Errorf("could not convert yaml file to json: %v", err)
+			return errs.Wrap(err, "Could not convert yaml file to json")
 		}
 
-		obj.UnmarshalJSON(jsonSpec)
+		err = injectRuntimeInformation(&jsonSpec)
+		exitOnError(errs.Wrap(err, "Cannot inject runtime information"))
+
+		err = obj.UnmarshalJSON(jsonSpec)
+		exitOnError(errs.Wrap(err, "Cannot unmarshall json spec, check your manifests"))
+
+		// We are only building a driver-container if we cannot pull the image
+		// We are asuming that vendors provide pre compiled DriverContainers
+		// If err == nil, build a new container, if err != nil skip it
+		if err := rebuildDriverContainer(obj, r); err != nil {
+			log.Info("Skpping building driver-container", "Name", obj.GetName())
+			return nil
+		}
+
 		obj.SetNamespace(namespace)
 
 		// Callbacks before CRUD will update the manifests
-		if err := prefixResourceCallback(obj, r); err != nil {
-			log.Error(err, "prefix callbacks exited non-zero")
-			return err
+		if err := beforeCRUDhooks(obj, r); err != nil {
+			return errs.Wrap(err, "Before CRUD hooks failed")
 		}
 		// Create Update Delete Patch resources
-		if err := CRUD(obj, r); err != nil {
-			exitOnError(err, "CRUD exited non-zero")
-		}
+		err = CRUD(obj, r)
+		exitOnError(errs.Wrap(err, "CRUD exited non-zero"))
+
 		// Callbacks after CRUD will wait for ressource and check status
-		if err := postfixResourceCallback(obj, r); err != nil {
-			log.Error(err, "postfix callbacks exited non-zero")
-			return err
+		if err := afterCRUDhooks(obj, r); err != nil {
+			return errs.Wrap(err, "After CRUD hooks failed")
 		}
 
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Error(err, "failed to scan manifest: ", err)
-		return err
+		return errs.Wrap(err, "Failed to scan manifest")
 	}
 	return nil
 }
@@ -217,7 +257,7 @@ func needToUpdateResourceVersion(kind string) bool {
 	return false
 }
 
-func updateResource(req *unstructured.Unstructured, found *unstructured.Unstructured) error {
+func updateResourceVersion(req *unstructured.Unstructured, found *unstructured.Unstructured) error {
 
 	kind := found.GetKind()
 
@@ -226,8 +266,7 @@ func updateResource(req *unstructured.Unstructured, found *unstructured.Unstruct
 		checkNestedFields(fnd, err)
 
 		if err := unstructured.SetNestedField(req.Object, version, "metadata", "resourceVersion"); err != nil {
-			log.Error(err, "Couldn't update ResourceVersion")
-			return err
+			return errs.Wrap(err, "Couldn't update ResourceVersion")
 		}
 
 	}
@@ -236,8 +275,7 @@ func updateResource(req *unstructured.Unstructured, found *unstructured.Unstruct
 		checkNestedFields(fnd, err)
 
 		if err := unstructured.SetNestedField(req.Object, clusterIP, "spec", "clusterIP"); err != nil {
-			log.Error(err, "Couldn't update clusterIP")
-			return err
+			return errs.Wrap(err, "Couldn't update clusterIP")
 		}
 		return nil
 	}
@@ -251,7 +289,7 @@ func CRUD(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 	found := obj.DeepCopy()
 
 	if err := controllerutil.SetControllerReference(r.specialresource, obj, r.scheme); err != nil {
-		return fmt.Errorf("failed to set controller reference: (%v)", err)
+		return errs.Wrap(err, "Failed to set controller reference")
 	}
 
 	err := r.client.Get(context.TODO(), types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, found)
@@ -259,36 +297,57 @@ func CRUD(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 	if apierrors.IsNotFound(err) {
 		logger.Info("Not found, creating")
 		if err := r.client.Create(context.TODO(), obj); err != nil {
-			logger.Error(err, "Couldn't Create Resource")
-			return err
-		}
-		return nil
-	}
-	if err == nil && obj.GetKind() != "ServiceAccount" && obj.GetKind() != "Pod" {
-
-		logger.Info("Found, updating")
-		required := obj.DeepCopy()
-
-		// required.ResourceVersion = found.ResourceVersion
-		if err := updateResource(required, found); err != nil {
-			logger.Error(err, "Couldn't Update ResourceVersion")
-			return err
-		}
-
-		if err := r.client.Update(context.TODO(), required); err != nil {
-			logger.Error(err, "Couldn't Update Resource")
-			return err
+			return errs.Wrap(err, "Couldn't Create Resource")
 		}
 		return nil
 	}
 
 	if apierrors.IsForbidden(err) {
-		logger.Error(err, "Forbidden check Role, ClusterRole and Bindings for operator")
-		return err
+		return errs.Wrap(err, "Forbidden check Role, ClusterRole and Bindings for operator")
 	}
 
 	if err != nil {
-		logger.Error(err, "UNEXPECTED ERROR")
+		return errs.Wrap(err, "Unexpected error")
+	}
+
+	// ServiceAccounts cannot be updated, maybe delete and create?
+	if obj.GetKind() == "ServiceAccount" {
+		logger.Info("TODO: Found, not updating, does not work, why? Secret accumulation?")
+		return nil
+	}
+
+	logger.Info("Found, updating")
+	required := obj.DeepCopy()
+
+	// required.ResourceVersion = found.ResourceVersion
+	if err := updateResourceVersion(required, found); err != nil {
+		return errs.Wrap(err, "Couldn't Update ResourceVersion")
+	}
+
+	if err := r.client.Update(context.TODO(), required); err != nil {
+		return errs.Wrap(err, "Couldn't Update Resource")
+	}
+
+	return nil
+}
+
+func rebuildDriverContainer(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+
+	logger := log.WithValues("Kind", obj.GetKind(), "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+	// BuildConfig are currently not triggered by an update need to delete first
+	if obj.GetKind() == "BuildConfig" {
+		annotations := obj.GetAnnotations()
+		if vendor, ok := annotations["specialresource.openshift.io/driver-container-vendor"]; ok {
+			logger.Info("driver-container-vendor", "vendor", vendor)
+			if vendor == updateVendor {
+				logger.Info("vendor == updateVendor", "vendor", vendor, "updateVendor", updateVendor)
+				return nil
+			}
+			logger.Info("vendor != updateVendor", "vendor", vendor, "updateVendor", updateVendor)
+			return errs.New("vendor != updateVendor")
+		}
+		logger.Info("No label driver-container-vendor found")
+		return errs.New("No driver-container-vendor found, nor vendor == updateVendor")
 	}
 
 	return nil

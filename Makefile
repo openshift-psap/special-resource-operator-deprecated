@@ -9,6 +9,8 @@ DEPLOY_OBJECTS  = namespace.yaml service_account.yaml role.yaml role_binding.yam
 DEPLOY_CRD      = crds/sro.openshift.io_specialresources_crd.yaml 
 DEPLOY_CR       = crds/sro_v1alpha1_specialresource_cr.yaml
 
+SPECIALRESOURCE ?= gpu
+
 PACKAGE         = github.com/openshift-psap/special-resource-operator
 MAIN_PACKAGE    = $(PACKAGE)/cmd/manager
 
@@ -54,9 +56,16 @@ deploy-objects: deploy-crd
 		$(TEMPLATE_CMD) deploy/$$obj | kubectl apply -f - ; \
 	done 
 
+
 deploy: deploy-objects
-	kubectl create configmap special-resource-operator-states -n $(NAMESPACE) --from-file=assets/
 	@${TEMPLATE_CMD} deploy/$(DEPLOY_CR) | kubectl apply -f -
+
+
+gpu: deploy 
+	-kubectl delete configmap special-resource-operator-states -n $(NAMESPACE) 
+	kubectl create configmap special-resource-operator-states -n $(NAMESPACE) --from-file=recipes/$(SPECIALRESOURCE)
+	kubectl patch configmap special-resource-operator-states -n $(NAMESPACE)  --patch '{ "metadata": { "annotations": { "specialresource.openshift.io/nfd": "feature.node.kubernetes.io/pci-10de.present" } } }'
+
 
 undeploy:
 	@for obj in $(DEPLOY_CRD) $(DEPLOY_CR) $(DEPLOY_OBJECTS); do  \
@@ -82,6 +91,7 @@ clean:
 	rm -f $(BIN)
 
 local-image:
+	@rm -f special-resource-operator
 	podman build --no-cache -t $(IMAGE) -f $(DOCKERFILE) .
 test:
 	go test ./cmd/... ./pkg/... -coverprofile cover.out
