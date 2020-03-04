@@ -9,7 +9,7 @@ DEPLOY_OBJECTS  = namespace.yaml service_account.yaml role.yaml role_binding.yam
 DEPLOY_CRD      = crds/sro.openshift.io_specialresources_crd.yaml 
 DEPLOY_CR       = crds/sro_v1alpha1_specialresource_cr.yaml
 
-SPECIALRESOURCE ?= gpu
+SPECIALRESOURCE ?= nvidia-gpu
 
 PACKAGE         = github.com/openshift-psap/special-resource-operator
 MAIN_PACKAGE    = $(PACKAGE)/cmd/manager
@@ -61,7 +61,7 @@ deploy: deploy-objects
 	@${TEMPLATE_CMD} deploy/$(DEPLOY_CR) | kubectl apply -f -
 
 
-gpu: deploy 
+$(SPECIALRESOURCE): deploy 
 	-kubectl delete configmap special-resource-operator-states -n $(NAMESPACE) 
 	kubectl create configmap special-resource-operator-states -n $(NAMESPACE) --from-file=recipes/$(SPECIALRESOURCE)
 	kubectl patch configmap special-resource-operator-states -n $(NAMESPACE)  --patch '{ "metadata": { "annotations": { "specialresource.openshift.io/nfd": "feature.node.kubernetes.io/pci-10de.present" } } }'
