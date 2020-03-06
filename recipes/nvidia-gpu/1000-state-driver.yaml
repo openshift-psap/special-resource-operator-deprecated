@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: specialresource-driver-container-nvidia
+  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: specialresource-driver-container-nvidia
+  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 rules:
 - apiGroups:
@@ -22,24 +22,24 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: specialresource-driver-container-nvidia
+  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: specialresource-driver-container-nvidia
+  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 subjects:
 - kind: ServiceAccount
-  name: specialresource-driver-container-nvidia
+  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 userNames:
-- system:serviceaccount:openshift-sro:specialresource-driver-container-nvidia
+- system:serviceaccount:openshift-sro:specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: specialresource-driver-container-nvidia-entrypoint
+  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-entrypoint
   namespace: openshift-sro
 data:
   entrypoint.sh: |-
@@ -88,7 +88,7 @@ metadata:
       any SELinux context.  WARNING: this is the most relaxed SCC and should be used
       only for cluster administration. Grant with caution.'
 
-  name: specialresource-driver-container-nvidia
+  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 priority: null
 readOnlyRootFilesystem: false
 requiredDropCapabilities: null
@@ -101,7 +101,7 @@ seccompProfiles:
 supplementalGroups:
   type: RunAsAny
 users:
-- system:serviceaccount:openshift-sro:specialresource-driver-container-nvidia
+- system:serviceaccount:openshift-sro:specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 volumes:
 - '*'
 ---
@@ -109,11 +109,11 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
-    app: specialresource-driver-container-nvidia
-  name: specialresource-driver-container-nvidia
+    app: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
   annotations:
-    openshift.io/scc: specialresource-driver-container-nvidia
+    openshift.io/scc: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
     specialresource.openshift.io/wait: "true"
     specialresrouce.openshift.io/wait-for-logs: "\\+ wait \\d+"
     specialresource.openshift.io/inject-runtime-info: "true"
@@ -122,7 +122,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: specialresource-driver-container-nvidia
+      app: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   template:
     metadata:
       # Mark this pod as a critical add-on; when enabled, the critical add-on scheduler
@@ -131,28 +131,28 @@ spec:
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ""
       labels:
-        app: specialresource-driver-container-nvidia
+        app: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
     spec:
       tolerations:
       - operator: Exists
       - key: nvidia.com/gpu
         operator: Exists
         effect: NoSchedule
-      serviceAccount: specialresource-driver-container-nvidia
-      serviceAccountName: specialresource-driver-container-nvidia
+      serviceAccount: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      serviceAccountName: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
       hostPID: true
       containers:
 #      - image: quay.io/openshift-psap/nvidia-driver:v430.34-KERNEL_FULL_VERSION
-      - image: image-registry.openshift-image-registry.svc:5000/openshift-sro/specialresource-driver-container-nvidia:vSPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION
+      - image: image-registry.openshift-image-registry.svc:5000/openshift-sro/specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE:vSPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION
         imagePullPolicy: Always
-        name: specialresource-driver-container-nvidia-ctr
+        name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-ctr
         command: ["/bin/entrypoint.sh"]
         securityContext:
           privileged: true
           seLinuxOptions:
             level: "s0"
         volumeMounts:
-          - name: run-nvidia
+          - name: run-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
             mountPath: /run/nvidia
             mountPropagation: Bidirectional
           - name: entrypoint
@@ -167,13 +167,13 @@ spec:
           failureThreshold: 60
           periodSeconds: 10
       volumes:
-        - name: run-nvidia
+        - name: run-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
           hostPath:
             path: /run/nvidia
         - name: entrypoint
           configMap:
             defaultMode: 0700
-            name: specialresource-driver-container-nvidia-entrypoint
+            name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-entrypoint
       nodeSelector:
         node-role.kubernetes.io/worker: ""
         SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE: "true"

@@ -176,10 +176,10 @@ func (r *ReconcileSpecialResource) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{}, err
 	}
 
-	if err := ReconcileClusterResources(r); err != nil {
+	if err := ReconcileHardwareConfigurations(r); err != nil {
 		// We do not want a stacktrace here, errs.Wrap already created
 		// breadcrumb of errors to follow. Just sprintf with %v rather than %+v
-		log.Info("Could not reconcile cluster resources", "error", fmt.Sprintf("%v", err))
+		log.Info("Could not reconcile hardware configurations", "error", fmt.Sprintf("%v", err))
 		return reconcile.Result{}, errs.New("Reconciling failed")
 	}
 

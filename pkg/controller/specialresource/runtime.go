@@ -14,10 +14,12 @@ func injectRuntimeInformation(jsonSpec *[]byte) error {
 	err := obj.UnmarshalJSON(*jsonSpec)
 	exitOnError(errs.Wrap(err, "Cannot unmarshall json spec, check your manifests"))
 
+	// Since we're injecting the runtime information to almost all manifests we're skipping
+	/* here the check
 	annotations := obj.GetAnnotations()
 	if inject, ok := annotations["specialresource.openshift.io/inject-runtime-info"]; !ok || inject != "true" {
 		return nil
-	}
+	} */
 
 	spec := string(*jsonSpec)
 
@@ -28,6 +30,7 @@ func injectRuntimeInformation(jsonSpec *[]byte) error {
 	log.Info("Runtime Information", "nodeFeature", nodeFeature)
 
 	pattern := strings.NewReplacer(
+		"SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE", hardwareResource,
 		"SPECIALRESOURCE.OPENSHIFT.IO.OPERATINGSYSTEM", operatingSystem,
 		"SPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION", kernelVersion,
 		"SPECIALRESOURCE.OPENSHIFT.IO.CLUSTERVERSION", clusterVersion,

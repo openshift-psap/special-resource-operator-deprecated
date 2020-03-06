@@ -2,18 +2,18 @@ apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
   labels:
-    app: specialresource-driver-container-nvidia
+    app: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   annotations:
     specialresource.openshift.io/inject-runtime-info: "true"
-  name: specialresource-driver-container-nvidia
+  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 spec: {}
 ---
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
   labels:
-    app: specialresource-driver-container-nvidia 
-  name: specialresource-driver-container-nvidia
+    app: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE 
+  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   annotations:
     specialresource.openshift.io/wait: "true"
     specialresource.openshift.io/inject-runtime-info: "true"
@@ -40,4 +40,4 @@ spec:
   output:
     to:
       kind: ImageStreamTag
-      name: specialresource-driver-container-nvidia:vSPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION
+      name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE:vSPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION

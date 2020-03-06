@@ -7,7 +7,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: specialresource-runtime-enablement
+  name: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 rules:
 - apiGroups:
@@ -22,24 +22,24 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: specialresource-runtime-enablement
+  name: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: specialresource-runtime-enablement
+  name: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 subjects:
 - kind: ServiceAccount
-  name: specialresource-runtime-enablement
+  name: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 userNames:
-- system:serviceaccount:openshift-sro:specialresource-runtime-enablement
+- system:serviceaccount:openshift-sro:specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: specialresource-runtime-enablement-entrypoint
+  name: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-entrypoint
   namespace: openshift-sro
 data:
   entrypoint.sh: |-
@@ -52,7 +52,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: specialresource-runtime-enablement-init-entrypoint
+  name: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-init-entrypoint
   namespace: openshift-sro
 data:
   entrypoint.sh: |-
@@ -63,8 +63,8 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
-    app: specialresource-runtime-enablement
-  name: specialresource-runtime-enablement
+    app: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+  name: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
   annotations:
     specialresource.openshift.io/state: "runtime-enablement"
@@ -73,13 +73,13 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: specialresource-runtime-enablement
+      app: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   template:
     metadata:
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ""
       labels:
-        app: specialresource-runtime-enablement
+        app: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
     spec:
       affinity:
         nodeAffinity:
@@ -92,7 +92,7 @@ spec:
                 - ready 
       initContainers: 
       - image: quay.io/openshift-psap/ubi8-kmod
-        name: specialresource-driver-validation
+        name: specialresource-driver-validation-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
         command: ["/bin/entrypoint.sh"]
         volumeMounts:
         - name: init-entrypoint
@@ -110,7 +110,7 @@ spec:
         - name: RUNTIME
           value: crio
         imagePullPolicy: IfNotPresent
-        name: specialresource-runtime-enablement-ctr
+        name: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-ctr
         resources: {}
         securityContext:
           privileged: true
@@ -139,8 +139,8 @@ spec:
         SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE: "true"
       restartPolicy: Always
       securityContext: {}
-      serviceAccount: specialresource-runtime-enablement
-      serviceAccountName: specialresource-runtime-enablement
+      serviceAccount: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      serviceAccountName: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
       tolerations:
       - key: CriticalAddonsOnly
         operator: Exists
@@ -151,11 +151,11 @@ spec:
       - name: entrypoint
         configMap:
           defaultMode: 0700
-          name: specialresource-runtime-enablement-entrypoint
+          name: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-entrypoint
       - name: init-entrypoint
         configMap:
           defaultMode: 0700
-          name: specialresource-runtime-enablement-init-entrypoint
+          name: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-init-entrypoint
       - hostPath:
           path: /var/run/docker.sock
           type: ""

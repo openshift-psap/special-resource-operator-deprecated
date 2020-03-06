@@ -38,11 +38,12 @@ var (
 		list:  &unstructured.UnstructuredList{},
 		count: 0xDEADBEEF,
 	}
-	operatingSystem = ""
-	kernelVersion   = ""
-	clusterVersion  = ""
-	updateVendor    = ""
-	nodeFeature     = ""
+	operatingSystem  = ""
+	kernelVersion    = ""
+	clusterVersion   = ""
+	updateVendor     = ""
+	nodeFeature      = ""
+	hardwareResource = ""
 )
 
 // AddKubeClient Add a native non-caching client for advanced CRUD operations
@@ -119,30 +120,35 @@ func cacheNodes(r *ReconcileSpecialResource, force bool) (*unstructured.Unstruct
 	return node.list, err
 }
 
-func getSROstatesCM(r *ReconcileSpecialResource) (map[string]interface{}, []string, error) {
+func getHardwareConfigurations(r *ReconcileSpecialResource) (*unstructured.UnstructuredList, error) {
 
-	log.Info("Looking for ConfigMap special-resource-operator-states")
-	cm := &unstructured.Unstructured{}
+	log.Info("Looking for Hardware Configuration ConfigMaps with label specialresource.openshift.io/config: true")
+	cms := &unstructured.UnstructuredList{}
+	cms.SetAPIVersion("v1")
+	cms.SetKind("ConfigMapList")
 
-	cm.SetAPIVersion("v1")
-	cm.SetKind("ConfigMap")
+	labels := map[string]string{"specialresource.openshift.io/config": "true"}
 
-	ns := r.specialresource.GetNamespace()
-	err := r.client.Get(context.TODO(), types.NamespacedName{Namespace: ns, Name: "special-resource-operator-states"}, cm)
+	opts := &client.ListOptions{}
+	opts.InNamespace(r.specialresource.Namespace)
+	opts.MatchingLabels(labels)
 
+	err := r.client.List(context.TODO(), opts, cms)
 	if apierrors.IsNotFound(err) {
-		return nil, nil, errs.New("ConfigMap special-resource-states not found, see README and create the states")
+		return nil, errs.New("Hardware Configuration ConfigMaps with label specialresource.openshift.io/config: true not found, see README and create the states")
 	}
 
-	annotations := cm.GetAnnotations()
-	if nfd, ok := annotations["specialresource.openshift.io/nfd"]; ok && len(nfd) > 0 {
-		nodeFeature = nfd
-		log.Info("NFD", "nodeFeature", nodeFeature)
-	} else {
-		return nil, nil, errs.New("ConfigMap has no specialresource.openshift.io/nfd annotation cannot determine the device")
-	}
+	return cms, nil
+}
 
-	manifests, found, err := unstructured.NestedMap(cm.Object, "data")
+// ReconcileHardwareStates Reconcile Hardware States
+func ReconcileHardwareStates(r *ReconcileSpecialResource, config unstructured.Unstructured) error {
+
+	var manifests map[string]interface{}
+	var err error
+	var found bool
+
+	manifests, found, err = unstructured.NestedMap(config.Object, "data")
 	checkNestedFields(found, err)
 
 	states := make([]string, 0, len(manifests))
@@ -152,19 +158,26 @@ func getSROstatesCM(r *ReconcileSpecialResource) (map[string]interface{}, []stri
 
 	sort.Strings(states)
 
-	return manifests, states, nil
+	for _, state := range states {
 
+		log.Info("Executing", "State", state)
+		namespacedYAML := []byte(manifests[state].(string))
+		if err := createFromYAML(namespacedYAML, r); err != nil {
+			return errs.Wrap(err, "Failed to create resources")
+		}
+	}
+
+	return nil
 }
 
-// ReconcileClusterResources Reconcile cluster resources
-func ReconcileClusterResources(r *ReconcileSpecialResource) error {
+// ReconcileHardwareConfigurations Reconcile Hardware Configurations
+func ReconcileHardwareConfigurations(r *ReconcileSpecialResource) error {
 
-	var manifests map[string]interface{}
-	var states []string
 	var err error
+	var configs *unstructured.UnstructuredList
 
-	if manifests, states, err = getSROstatesCM(r); err != nil {
-		return errs.Wrap(err, "Error reconciling SRO states")
+	if configs, err = getHardwareConfigurations(r); err != nil {
+		return errs.Wrap(err, "Error reconciling Hardware Configuration (states, Specialresource)")
 	}
 
 	node.list, err = cacheNodes(r, false)
@@ -179,12 +192,25 @@ func ReconcileClusterResources(r *ReconcileSpecialResource) error {
 	clusterVersion, err = getClusterVersion()
 	exitOnError(errs.Wrap(err, "Failed to get cluster version"))
 
-	for _, state := range states {
+	for _, config := range configs.Items {
 
-		log.Info("Executing", "State", state)
-		namespacedYAML := []byte(manifests[state].(string))
-		if err := createFromYAML(namespacedYAML, r); err != nil {
-			return errs.Wrap(err, "Failed to create resources")
+		var found bool
+		annotations := config.GetAnnotations()
+
+		log.Info("Found Hardware Configuration", "Name", config.GetName())
+
+		if nodeFeature, found = annotations["specialresource.openshift.io/nfd"]; !found || len(nodeFeature) == 0 {
+			return errs.New("ConfigMap has no specialresource.openshift.io/nfd annotation cannot determine the device")
+		}
+		log.Info("NFD", "nodeFeature", nodeFeature)
+
+		if hardwareResource, found = annotations["specialresource.openshift.io/hardware"]; !found || len(hardwareResource) == 0 {
+			return errs.New("ConfigMap has no specialresource.openshift.io/hardware annotation cannot determine the vendor-specialresource")
+		}
+		log.Info("Hardware", "hardwareResource", hardwareResource)
+
+		if err := ReconcileHardwareStates(r, config); err != nil {
+			return errs.Wrap(err, "Cannot reconcile hardware states")
 		}
 	}
 

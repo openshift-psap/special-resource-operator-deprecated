@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: specialresource-feature-discovery
+  name: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: specialresource-feature-discovery
+  name: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 rules:
 - apiGroups:
@@ -23,40 +23,40 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: specialresource-feature-discovery
+  name: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: specialresource-feature-discovery
+  name: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 subjects:
 - kind: ServiceAccount
-  name: specialresource-feature-discovery
+  name: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 userNames:
-- system:serviceaccount:openshift-sro:specialresource-feature-discovery
+- system:serviceaccount:openshift-sro:specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 --- 
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: specialresource-feature-discovery
+  name: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   annotations:
     specialresource.openshift.io/wait: "true"
     specialresource.openshift.io/inject-runtime-info: "true"
   labels:
-    app.kubernetes.io/name: specialresource-feature-discovery
+    app.kubernetes.io/name: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
     app.kubernetes.io/version: 1.0.0-alpha
     app.kubernetes.io/part-of: nvidia-gpu
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: specialresource-feature-discovery
+      app.kubernetes.io/name: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
       app.kubernetes.io/part-of: nvidia-gpu
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: specialresource-feature-discovery
+        app.kubernetes.io/name: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
         app.kubernetes.io/version: 1.0.0-alpha
         app.kubernetes.io/part-of: nvidia-gpu
     spec:
@@ -74,8 +74,8 @@ spec:
         - key: nvidia.com/gpu
           operator: Exists
       effect: NoSchedule
-      serviceAccount: specialresource-feature-discovery
-      serviceAccountName: specialresource-feature-discovery
+      serviceAccount: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      serviceAccountName: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
       containers:
         - image: quay.io/openshift-psap/nvidia-feature-discovery  # nvidia/gpu-feature-discovery:1.0.0-alpha
           env:
@@ -85,7 +85,7 @@ spec:
               value: "compute,utility"
             - name: NVIDIA_REQUIRE_CUDA  
               value: "cuda>=5.0"
-          name: specialresource-feature-discovery
+          name: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
           securityContext:
             privileged: true
           volumeMounts:

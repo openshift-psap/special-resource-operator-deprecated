@@ -21,13 +21,13 @@ data:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: specialresource-metrics-exporter
+  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: specialresource-metrics-exporter
+  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 rules:
 - apiGroups:
@@ -42,17 +42,17 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: specialresource-metrics-exporter
+  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: specialresource-metrics-exporter
+  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 subjects:
 - kind: ServiceAccount
-  name: specialresource-metrics-exporter
+  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 userNames:
-- system:serviceaccount:openshift-sro:specialresource-metrics-exporter
+- system:serviceaccount:openshift-sro:specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -89,12 +89,12 @@ apiVersion: v1
 kind: Service
 metadata:
   namespace: openshift-sro
-  name: specialresource-metrics-exporter
+  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   labels:
-    app: specialresource-metrics-exporter
+    app: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 spec:
   selector:
-    app: specialresource-metrics-exporter
+    app: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   type: ClusterIP
   ports:
   - name: dcgm
@@ -106,7 +106,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   namespace: openshift-sro
-  name: specialresource-metrics-exporter
+  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 spec:
   endpoints:
   - port: dcgm 
@@ -116,7 +116,7 @@ spec:
     - openshift-sro
   selector:
     matchLabels:
-      app: specialresource-metrics-exporter
+      app: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 ---
 # Node exporter collecting only GPU metrics from dcgm-exporter.
 # Except textfile collector, all other collectors that are enabled by default are disabled.
@@ -125,8 +125,8 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels: 
-    app: specialresource-metrics-exporter
-  name: specialresource-metrics-exporter
+    app: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
   annotations: 
     specialresource.openshift.io/state: "device-monitoring"
@@ -135,12 +135,12 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: specialresource-metrics-exporter
+      app: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   template:
     metadata:
       labels:
-        app: specialresource-metrics-exporter
-      name: specialresource-metrics-exporter
+        app: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
     spec:
       affinity:
         nodeAffinity:
@@ -156,12 +156,12 @@ spec:
       - key: nvidia.com/gpu
         operator: Exists
         effect: NoSchedule
-      serviceAccount: specialresource-metrics-exporter
-      serviceAccountName: specialresource-metrics-exporter
+      serviceAccount: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      serviceAccountName: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
       initContainers:
       - image: quay.io/openshift-psap/cuda-vector-add:v0.1
         imagePullPolicy: Always
-        name: cuda-vector-add
+        name: specialresource-device-plugin-validation-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
         command: ["/bin/entrypoint.sh"]
         securityContext:
           allowPrivilegeEscalation: false
@@ -234,7 +234,7 @@ spec:
           readOnly: true
           mountPath: /run/prometheus
       - image: nvidia/dcgm-exporter:1.4.6
-        name: specialresource-metrics-exporter
+        name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
         securityContext:
           runAsNonRoot: false
           runAsUser: 0

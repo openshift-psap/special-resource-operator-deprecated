@@ -22,13 +22,13 @@ data:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: specialresource-device-plugin
+  name: specialresource-device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: specialresource-device-plugin
+  name: specialresource-device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 rules:
 - apiGroups:
@@ -43,26 +43,26 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: specialresource-device-plugin
+  name: specialresource-device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: specialresource-device-plugin
+  name: specialresource-device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 subjects:
 - kind: ServiceAccount
-  name: specialresource-device-plugin
+  name: specialresource-device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 userNames:
-- system:serviceaccount:openshift-sro-operator:specialresource-device-plugin
+- system:serviceaccount:openshift-sro:specialresource-device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
-    app: specialresource-device-plugin
-  name: specialresource-device-plugin
+    app: specialresource-device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+  name: specialresource-device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
   annotations:
     openshift.io/scc: hostmount-anyuid
@@ -72,7 +72,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: specialresource-device-plugin
+      app: specialresource-device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   template:
     metadata:
       # Mark this pod as a critical add-on; when enabled, the critical add-on scheduler
@@ -81,7 +81,7 @@ spec:
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ""
       labels:
-        app: specialresource-device-plugin
+        app: specialresource-device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
     spec:
       affinity:
         nodeAffinity:
@@ -101,11 +101,11 @@ spec:
       - key: nvidia.com/gpu
         operator: Exists
         effect: NoSchedule
-      serviceAccount: specialresource-device-plugin
+      serviceAccount: specialresource-device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
       initContainers:
       - image: nvidia/samples:cuda10.2-vectorAdd
         imagePullPolicy: Always
-        name: cuda-vector-add
+        name: specialresource-runtime-validation-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
         command: ["/bin/entrypoint.sh"]
         securityContext:
           allowPrivilegeEscalation: false
@@ -118,17 +118,17 @@ spec:
           subPath: entrypoint.sh
       containers:
       - image: nvidia/k8s-device-plugin:1.11 
-        name: specialresource-device-plugin-ctr
+        name: specialresource-device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-ctr
         securityContext:
           privileged: true
         env:
           - name: NVIDIA_VISIBLE_DEVICES
             value: all
         volumeMounts:
-          - name: device-plugin
+          - name: device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
             mountPath: /var/lib/kubelet/device-plugins
       volumes:
-        - name: device-plugin
+        - name: device-plugi-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
           hostPath:
             path: /var/lib/kubelet/device-plugins
         - name: init-entrypoint
