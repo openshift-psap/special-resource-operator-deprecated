@@ -3,13 +3,13 @@ package specialresource
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
 	"strings"
 	"time"
 
-	errs "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -18,23 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var waitFor resourceCallbacks
-
-func init() {
-
-	waitFor = make(resourceCallbacks)
-	waitFor["Pod"] = waitForPod
-	waitFor["DaemonSet"] = waitForDaemonSet
-	waitFor["BuildConfig"] = waitForBuild
-
-}
-
 type statusCallback func(obj *unstructured.Unstructured) bool
-
-var (
-	retryInterval = time.Second * 5
-	timeout       = time.Second * 15
-)
 
 // makeStatusCallback Closure capturing json path and expected status
 func makeStatusCallback(obj *unstructured.Unstructured, status interface{}, fields ...string) func(obj *unstructured.Unstructured) bool {
@@ -42,26 +26,18 @@ func makeStatusCallback(obj *unstructured.Unstructured, status interface{}, fiel
 	_fields := fields
 	return func(obj *unstructured.Unstructured) bool {
 		switch x := _status.(type) {
-		case int64:
-			expected := _status.(int64)
-			current, found, err := unstructured.NestedInt64(obj.Object, _fields...)
-			checkNestedFields(found, err)
+		case int, int32, int8, int64:
 
+			expected := _status.(int)
+			current, found, _ := unstructured.NestedInt64(obj.Object, _fields...)
+			if !found {
+				log.Info("Not found, ignoring")
+				return true
+			}
 			if current == int64(expected) {
 				return true
 			}
 			return false
-
-		case int:
-			expected := _status.(int)
-			current, found, err := unstructured.NestedInt64(obj.Object, _fields...)
-			checkNestedFields(found, err)
-
-			if int(current) == int(expected) {
-				return true
-			}
-			return false
-
 		case string:
 			expected := _status.(string)
 			current, found, err := unstructured.NestedString(obj.Object, _fields...)
@@ -90,11 +66,16 @@ func waitForResource(obj *unstructured.Unstructured, r *ReconcileSpecialResource
 	// DaemonSet NumberUnavailable == 0, etc
 	if wait, ok := waitFor[obj.GetKind()]; ok {
 		if err = wait(obj, r); err != nil {
-			return errs.Wrap(err, "Waiting too long for resource")
+			return err
 		}
 	}
-
-	return nil
+	// Wait for specific condition of a specific resource
+	if wait, ok := waitFor[obj.GetName()]; ok {
+		if err = wait(obj, r); err != nil {
+			return err
+		}
+	}
+	return err
 }
 
 func waitForPod(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
@@ -105,38 +86,12 @@ func waitForPod(obj *unstructured.Unstructured, r *ReconcileSpecialResource) err
 	return waitForResourceFullAvailability(obj, r, callback)
 }
 
-func waitForDaemonSetCallback(obj *unstructured.Unstructured) bool {
-
-	// The total number of nodes that should be running the daemon pod
-	var err error
-	var found bool
-	var callback statusCallback
-
-	callback = func(obj *unstructured.Unstructured) bool { return false }
-
-	node.count, found, err = unstructured.NestedInt64(obj.Object, "status", "desiredNumberScheduled")
-	checkNestedFields(found, err)
-
-	_, found, err = unstructured.NestedInt64(obj.Object, "status", "numberUnavailable")
-	if found {
-		callback = makeStatusCallback(obj, 0, "status", "numberUnavailable")
-	}
-
-	_, found, err = unstructured.NestedInt64(obj.Object, "status", "numberAvailable")
-	if found {
-		callback = makeStatusCallback(obj, node.count, "status", "numberAvailable")
-	}
-
-	return callback(obj)
-
-}
-
 func waitForDaemonSet(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 	if err := waitForResourceAvailability(obj, r); err != nil {
 		return err
 	}
-
-	return waitForResourceFullAvailability(obj, r, waitForDaemonSetCallback)
+	callback := makeStatusCallback(obj, 0, "status", "numberUnavailable")
+	return waitForResourceFullAvailability(obj, r, callback)
 }
 
 func waitForBuild(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
@@ -152,19 +107,29 @@ func waitForBuild(obj *unstructured.Unstructured, r *ReconcileSpecialResource) e
 	opts := &client.ListOptions{}
 	opts.InNamespace(r.specialresource.Namespace)
 
-	if err := r.client.List(context.TODO(), opts, builds); err != nil {
-		return errs.Wrap(err, "Could not get BuildList")
+	err := r.client.List(context.TODO(), opts, builds)
+	if err != nil {
+		log.Error(err, "Could not get BuildList")
+		return err
 	}
 
 	for _, build := range builds.Items {
 		callback := makeStatusCallback(&build, "Complete", "status", "phase")
-		if err := waitForResourceFullAvailability(&build, r, callback); err != nil {
+		err := waitForResourceFullAvailability(&build, r, callback)
+		if err != nil {
 			return err
 		}
 	}
 
 	return nil
 }
+
+// WAIT FOR RESOURCES -- other file?
+
+var (
+	retryInterval = time.Second * 5
+	timeout       = time.Second * 120
+)
 
 func waitForResourceAvailability(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 
@@ -203,8 +168,7 @@ func waitForResourceFullAvailability(obj *unstructured.Unstructured, r *Reconcil
 	return err
 }
 
-func waitForDaemonSetLogs(obj *unstructured.Unstructured, r *ReconcileSpecialResource, pattern string) error {
-
+func waitForDaemonSetLogs(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 	log.Info("waitForDaemonSetLogs", "Name", obj.GetName())
 
 	pods := &unstructured.UnstructuredList{}
@@ -212,16 +176,7 @@ func waitForDaemonSetLogs(obj *unstructured.Unstructured, r *ReconcileSpecialRes
 	pods.SetKind("pod")
 
 	label := make(map[string]string)
-
-	var found bool
-	var selector string
-
-	if selector, found = obj.GetLabels()["app"]; !found {
-		errs.New("Cannot find Label app=, missing take a look at the manifests")
-	}
-
-	log.Info("Looking for Pods with label app=" + selector)
-	label["app"] = selector
+	label["app"] = obj.GetName()
 
 	opts := &client.ListOptions{}
 	opts.InNamespace(r.specialresource.Namespace)
@@ -229,7 +184,8 @@ func waitForDaemonSetLogs(obj *unstructured.Unstructured, r *ReconcileSpecialRes
 
 	err := r.client.List(context.TODO(), opts, pods)
 	if err != nil {
-		return errs.Wrap(err, "Could not get PodList")
+		log.Error(err, "Could not get PodList")
+		return err
 	}
 
 	for _, pod := range pods.Items {
@@ -238,22 +194,25 @@ func waitForDaemonSetLogs(obj *unstructured.Unstructured, r *ReconcileSpecialRes
 		req := kubeclient.CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &podLogOpts)
 		podLogs, err := req.Stream()
 		if err != nil {
-			return errs.Wrap(err, "Error in opening stream")
+			log.Error(err, "Error in opening stream")
+			return err
 		}
 		defer podLogs.Close()
 
 		buf := new(bytes.Buffer)
 		_, err = io.Copy(buf, podLogs)
 		if err != nil {
-			return errs.Wrap(err, "Error in copy information from podLogs to buf")
+			log.Error(err, "Error in copy information from podLogs to buf")
+			return err
 		}
 		str := buf.String()
-		lastBytes := str[len(str)-100:]
+		lastBytes := str[len(str)-20:]
 		log.Info("waitForDaemonSetLogs", "LastBytes", lastBytes)
-
+		pattern := "\\+ wait \\d+|\\+ sleep infinity"
 		if match, _ := regexp.MatchString(pattern, lastBytes); !match {
-			return errs.New("Not yet done. Not matched against \\+ wait \\d+ ")
+			return errors.New("Not yet done. Not matched against \\+ wait \\d+|\\+ sleep infinity ")
 		}
+
 		// We're only checking one Pod not all of them
 		break
 	}
