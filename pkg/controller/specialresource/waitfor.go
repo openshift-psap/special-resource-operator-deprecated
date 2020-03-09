@@ -208,9 +208,9 @@ func waitForDaemonSetLogs(obj *unstructured.Unstructured, r *ReconcileSpecialRes
 		str := buf.String()
 		lastBytes := str[len(str)-20:]
 		log.Info("waitForDaemonSetLogs", "LastBytes", lastBytes)
-		pattern := "\\+ wait \\d+"
+		pattern := "\\+ wait \\d+|\\+ sleep infinity"
 		if match, _ := regexp.MatchString(pattern, lastBytes); !match {
-			return errors.New("Not yet done. Not matched against \\+ wait \\d+ ")
+			return errors.New("Not yet done. Not matched against \\+ wait \\d+|\\+ sleep infinity ")
 		}
 
 		// We're only checking one Pod not all of them
