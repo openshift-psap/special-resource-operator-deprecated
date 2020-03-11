@@ -1,10 +1,10 @@
 REGISTRY       ?= quay.io
 ORG            ?= openshift-psap
 TAG            ?= $(shell git branch | grep \* | cut -d ' ' -f2)
-IMAGE          ?= ${REGISTRY}/${ORG}/special-resource-operator:${TAG}
+IMAGE          ?= $(REGISTRY)/$(ORG)/special-resource-operator:$(TAG)
 NAMESPACE      ?= openshift-sro
 PULLPOLICY     ?= IfNotPresent
-TEMPLATE_CMD    = sed 's+REPLACE_IMAGE+${IMAGE}+g; s+REPLACE_NAMESPACE+${NAMESPACE}+g; s+Always+${PULLPOLICY}+'
+TEMPLATE_CMD    = sed 's+REPLACE_IMAGE+$(IMAGE)+g; s+REPLACE_NAMESPACE+$(NAMESPACE)+g; s+Always+$(PULLPOLICY)+'
 DEPLOY_OBJECTS  = namespace.yaml service_account.yaml role.yaml role_binding.yaml operator.yaml
 DEPLOY_CRD      = crds/sro.openshift.io_specialresources_crd.yaml 
 DEPLOY_CR       = crds/sro_v1alpha1_specialresource_cr.yaml
@@ -33,18 +33,18 @@ build:
 	$(GO_BUILD_RECIPE)
 
 test-e2e: 
-	@${TEMPLATE_CMD} manifests/service_account.yaml > $(TEST_RESOURCES)
+	@$(TEMPLATE_CMD) manifests/service_account.yaml > $(TEST_RESOURCES)
 	echo -e "\n---\n" >> $(TEST_RESOURCES)
-	@${TEMPLATE_CMD} manifests/role.yaml >> $(TEST_RESOURCES)
+	@$(TEMPLATE_CMD) manifests/role.yaml >> $(TEST_RESOURCES)
 	echo -e "\n---\n" >> $(TEST_RESOURCES)
-	@${TEMPLATE_CMD} manifests/role_binding.yaml >> $(TEST_RESOURCES)
+	@$(TEMPLATE_CMD) manifests/role_binding.yaml >> $(TEST_RESOURCES)
 	echo -e "\n---\n" >> $(TEST_RESOURCES)
-	@${TEMPLATE_CMD} manifests/operator.yaml >> $(TEST_RESOURCES)
+	@$(TEMPLATE_CMD) manifests/operator.yaml >> $(TEST_RESOURCES)
 
 	go test -v ./test/e2e/... -root $(PWD) -kubeconfig=$(KUBECONFIG) -tags e2e  -globalMan $(DEPLOY_CRD) -namespacedMan $(TEST_RESOURCES)
 
 $(DEPLOY_CRD):
-	@${TEMPLATE_CMD} deploy/$@ | kubectl apply -f -
+	@$(TEMPLATE_CMDSPECIALRESOURCE deploy/$@ | kubectl apply -f -
 
 deploy-crd: $(DEPLOY_CRD) 
 	@sleep 1 
@@ -56,7 +56,7 @@ deploy-objects: deploy-crd
 
 
 deploy: deploy-objects
-	@${TEMPLATE_CMD} deploy/$(DEPLOY_CR) | kubectl apply -f -
+	@$(TEMPLATE_CMD) deploy/$(DEPLOY_CR) | kubectl apply -f -
 
 include recipes/$(SPECIALRESOURCE)/config/Makefile
 
