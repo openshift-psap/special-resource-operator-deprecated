@@ -11,7 +11,7 @@ DEPLOY_CR       = crds/sro_v1alpha1_specialresource_cr.yaml
 
 PACKAGE         = github.com/openshift-psap/special-resource-operator
 MAIN_PACKAGE    = $(PACKAGE)/cmd/manager
-SPECIALRESOURCE = nvidia-gpu
+SPECIALRESOURCE ?= nvidia-gpu
 DOCKERFILE      = Dockerfile
 ENVVAR          = GOOS=linux CGO_ENABLED=0
 GOOS            = linux
@@ -59,7 +59,6 @@ deploy: deploy-objects
 	@$(TEMPLATE_CMD) deploy/$(DEPLOY_CR) | kubectl apply -f -
 
 include recipes/$(SPECIALRESOURCE)/config/Makefile
-
 
 undeploy:
 	@for obj in $(DEPLOY_CRD) $(DEPLOY_CR) $(DEPLOY_OBJECTS); do  \
