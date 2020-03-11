@@ -8,13 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-var stateLabels = map[string]map[string]string{
-	"driver-container":   {"specialresource.openshift.io/driver-container": "ready"},
-	"runtime-enablement": {"specialresource.openshift.io/runtime-enablement": "ready"},
-	"device-plugin":      {"specialresource.openshift.io/device-plugin": "ready"},
-	"device-monitoring":  {"specialresource.openshift.io/device-monitoring": "ready"},
-}
-
 // If resource available, label the nodes according to the current state
 // if e.g driver-container ready -> specialresource.openshift.io/driver-container:ready
 func labelNodesAccordingToState(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
@@ -24,6 +17,13 @@ func labelNodesAccordingToState(obj *unstructured.Unstructured, r *ReconcileSpec
 	}
 
 	cacheNodes(r, true)
+
+	var stateLabels = map[string]map[string]string{
+		"driver-container":   {"specialresource.openshift.io/driver-container-" + hardwareResource: "ready"},
+		"runtime-enablement": {"specialresource.openshift.io/runtime-enablement-" + hardwareResource: "ready"},
+		"device-plugin":      {"specialresource.openshift.io/device-plugin-" + hardwareResource: "ready"},
+		"device-monitoring":  {"specialresource.openshift.io/device-monitoring-" + hardwareResource: "ready"},
+	}
 
 	for _, node := range node.list.Items {
 		labels := node.GetLabels()

@@ -22,7 +22,7 @@ type statusCallback func(obj *unstructured.Unstructured) bool
 
 var (
 	retryInterval = time.Second * 5
-	timeout       = time.Second * 60
+	timeout       = time.Second * 15
 )
 
 // makeStatusCallback Closure capturing json path and expected status

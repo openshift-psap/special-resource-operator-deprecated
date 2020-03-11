@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: specialresource-runtime-enablement
+  name: specialresource-runtime-enablement-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -86,7 +86,7 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: specialresource.openshift.io/driver-container
+              - key: specialresource.openshift.io/driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
                 operator: In 
                 values:
                 - ready 

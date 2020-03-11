@@ -11,7 +11,7 @@ DEPLOY_CR       = crds/sro_v1alpha1_specialresource_cr.yaml
 
 PACKAGE         = github.com/openshift-psap/special-resource-operator
 MAIN_PACKAGE    = $(PACKAGE)/cmd/manager
-
+SPECIALRESOURCE = nvidia-gpu
 DOCKERFILE      = Dockerfile
 ENVVAR          = GOOS=linux CGO_ENABLED=0
 GOOS            = linux
@@ -58,14 +58,7 @@ deploy-objects: deploy-crd
 deploy: deploy-objects
 	@${TEMPLATE_CMD} deploy/$(DEPLOY_CR) | kubectl apply -f -
 
-
-nvidia-gpu: deploy 
-	-kubectl delete configmap -n $(NAMESPACE) -l specialresource.openshift.io/config=true
-	kubectl create configmap 0000-$@ -n $(NAMESPACE) --from-file=recipes/$@
-	kubectl patch configmap 0000-$@ -n $(NAMESPACE)  --patch '{ "metadata": { "labels": { "specialresource.openshift.io/config": "true" }, "annotations": { "specialresource.openshift.io/nfd": "feature.node.kubernetes.io/pci-10de.present", "specialresource.openshift.io/hardware": "$@" } } }'
-
-	kubectl create configmap 0001-$@ -n $(NAMESPACE) --from-file=recipes/$@
-	kubectl patch configmap 0001-$@ -n $(NAMESPACE)  --patch '{ "metadata": { "labels": { "specialresource.openshift.io/config": "true" }, "annotations": { "specialresource.openshift.io/nfd": "feature.node.kubernetes.io/pci-10de.present", "specialresource.openshift.io/hardware": "$@" } } }'
+include recipes/$(SPECIALRESOURCE)/config/Makefile
 
 
 undeploy:

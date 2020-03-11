@@ -671,12 +671,12 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: specialresource.openshift.io/device-monitoring
+              - key: specialresource.openshift.io/device-monitoring-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
                 operator: In 
                 values:
                 - ready 
       containers:
-      - name: specialresource-grafana
+      - name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
         image: docker.io/grafana/grafana:master
         ports:
         - name: sc-grafana-http

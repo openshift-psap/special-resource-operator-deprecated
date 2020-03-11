@@ -115,7 +115,7 @@ metadata:
   annotations:
     openshift.io/scc: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
     specialresource.openshift.io/wait: "true"
-    specialresrouce.openshift.io/wait-for-logs: "\\+ wait \\d+"
+    specialresrouce.openshift.io/wait-for-logs: "\\+ wait \\d+|\\+ sleep infinity"
     specialresource.openshift.io/inject-runtime-info: "true"
     specialresource.openshift.io/state: "driver-container"
     specialresource.openshift.io/driver-container-vendor: SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE    

@@ -241,7 +241,7 @@ func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 		// We are asuming that vendors provide pre compiled DriverContainers
 		// If err == nil, build a new container, if err != nil skip it
 		if err := rebuildDriverContainer(obj, r); err != nil {
-			log.Info("Skpping building driver-container", "Name", obj.GetName())
+			log.Info("Skipping building driver-container", "Name", obj.GetName())
 			return nil
 		}
 

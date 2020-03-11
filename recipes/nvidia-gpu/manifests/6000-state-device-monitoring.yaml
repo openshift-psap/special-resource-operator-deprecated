@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: specialresource-device-plugin-validation-entrypoint
+  name: specialresource-device-plugin-validation-entrypoint-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 data:
   entrypoint.sh: |-
@@ -147,7 +147,7 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: specialresource.openshift.io/device-plugin
+              - key: specialresource.openshift.io/device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
                 operator: In 
                 values:
                 - ready 
@@ -258,7 +258,7 @@ spec:
       - name: init-entrypoint
         configMap:
           defaultMode: 0700
-          name: specialresource-device-plugin-validation-entrypoint
+          name: specialresource-device-plugin-validation-entrypoint-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 
       nodeSelector:
         node-role.kubernetes.io/worker: ""
