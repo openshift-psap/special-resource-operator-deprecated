@@ -20,17 +20,17 @@ GO_BUILD_RECIPE = GO111MODULE=$(GO111MODULE) GOOS=$(GOOS) go build -mod=vendor -
 
 TEST_RESOURCES  = $(shell mktemp -d)/test-init.yaml
 
-
 BIN=$(lastword $(subst /, ,$(PACKAGE)))
 
 GOFMT_CHECK=$(shell find . -not \( \( -wholename './.*' -o -wholename '*/vendor/*' \) -prune \) -name '*.go' | sort -u | xargs gofmt -s -l)
 
-
 all: build
-
 
 build:
 	$(GO_BUILD_RECIPE)
+
+test: verify
+	go test ./cmd/... ./pkg/... -coverprofile cover.out
 
 test-e2e: 
 	@$(TEMPLATE_CMD) manifests/service_account.yaml > $(TEST_RESOURCES)
@@ -44,7 +44,7 @@ test-e2e:
 	go test -v ./test/e2e/... -root $(PWD) -kubeconfig=$(KUBECONFIG) -tags e2e  -globalMan $(DEPLOY_CRD) -namespacedMan $(TEST_RESOURCES)
 
 $(DEPLOY_CRD):
-	@$(TEMPLATE_CMDSPECIALRESOURCE deploy/$@ | kubectl apply -f -
+	@$(TEMPLATE_CMD) deploy/$@ | kubectl apply -f -
 
 deploy-crd: $(DEPLOY_CRD) 
 	@sleep 1 
@@ -86,11 +86,8 @@ clean:
 local-image:
 	@rm -f special-resource-operator
 	podman build --no-cache -t $(IMAGE) -f $(DOCKERFILE) .
-test:
-	go test ./cmd/... ./pkg/... -coverprofile cover.out
 
 local-image-push:
 	podman push $(IMAGE) 
 
-.PHONY: all build generate verify verify-gofmt clean local-image local-image-push $(DEPLOY_CRDS) grafana
-
+.PHONY: all build generate verify verify-gofmt clean test test-e2e local-image local-image-push $(DEPLOY_CRDS) grafana
