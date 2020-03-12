@@ -18,6 +18,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var waitFor resourceCallbacks
+
+func init() {
+
+	waitFor = make(resourceCallbacks)
+	waitFor["Pod"] = waitForPod
+	waitFor["DaemonSet"] = waitForDaemonSet
+	waitFor["BuildConfig"] = waitForBuild
+
+}
+
 type statusCallback func(obj *unstructured.Unstructured) bool
 
 var (

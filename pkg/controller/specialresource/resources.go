@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/yaml"
@@ -45,16 +44,6 @@ var (
 	nodeFeature      = ""
 	hardwareResource = ""
 )
-
-// AddKubeClient Add a native non-caching client for advanced CRUD operations
-func AddKubeClient(cfg *rest.Config) error {
-	clientSet, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return err
-	}
-	kubeclient = clientSet
-	return nil
-}
 
 // Add3dpartyResourcesToScheme Adds 3rd party resources To the operator
 func Add3dpartyResourcesToScheme(scheme *runtime.Scheme) error {

@@ -3,39 +3,22 @@ package specialresource
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+func init() {
+
+	customCallback = make(resourceCallbacks)
+	customCallback["specialresource-grafana-configmap"] = customGrafanaConfigMap
+}
+
 type resourceCallbacks map[string]func(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error
 
-var prefixCallback resourceCallbacks
-var waitFor resourceCallbacks
+var customCallback resourceCallbacks
 
-// SetupCallbacks preassign callbacks for manipulating and handling of resources
-func SetupCallbacks() error {
-
-	prefixCallback = make(resourceCallbacks)
-
-	waitFor = make(resourceCallbacks)
-	prefixCallback["nvidia-grafana-configmap"] = prefixNVIDIAgrafanaConfigMap
-
-	waitFor["Pod"] = waitForPod
-	waitFor["DaemonSet"] = waitForDaemonSet
-	waitFor["BuildConfig"] = waitForBuild
-
-	return nil
-}
-
-func checkNestedFields(found bool, err error) {
-	if !found || err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
-}
 
 func beforeCRUDhooks(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 
@@ -43,11 +26,11 @@ func beforeCRUDhooks(obj *unstructured.Unstructured, r *ReconcileSpecialResource
 	todo := ""
 	annotations := obj.GetAnnotations()
 
-	if todo, ok = annotations["callback"]; !ok {
+	if todo, ok = annotations["specialresource.openshift.io/callback"]; !ok {
 		return nil
 	}
 
-	if prefix, ok := prefixCallback[todo]; ok {
+	if prefix, ok := customCallback[todo]; ok {
 		return prefix(obj, r)
 	}
 	return nil

@@ -142,7 +142,6 @@ spec:
       serviceAccountName: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
       hostPID: true
       containers:
-#      - image: quay.io/openshift-psap/nvidia-driver:v430.34-KERNEL_FULL_VERSION
       - image: image-registry.openshift-image-registry.svc:5000/openshift-sro/specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE:vSPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION
         imagePullPolicy: Always
         name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-ctr

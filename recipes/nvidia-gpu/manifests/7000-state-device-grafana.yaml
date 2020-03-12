@@ -1,30 +1,30 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: specialresource-grafana
+  name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
   labels:
-    metrics-infra: specialresource-grafana
-    name: specialresource-grafana
+    metrics-infra: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+    name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 spec:
   ports:
-  - name: specialresource-grafana
+  - name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
     port: 3000
     protocol: TCP
     targetPort: 3000
   selector:
-    app: specialresource-grafana
+    app: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: specialresource-grafana
+  name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 spec:
   host: ""
   to:
     kind: Service
-    name: specialresource-grafana
+    name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
     weight: 100
   port:
     targetPort: 3000
@@ -32,10 +32,10 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: specialresource-grafana
+  name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
   annotations:
-    callback: specialresource-grafana-configmap
+    specialresource.openshift.io/callback: specialresource-grafana-configmap
 data:
   ocp-prometheus.yml: |
     apiVersion: 1
@@ -58,7 +58,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: specialresource-grafana-dashboards
+  name: specialresource-grafana-dashboards-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 data:
   dashboards.yaml: |-
@@ -80,7 +80,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: specialresource-grafana-dashboard-gpu
+  name: specialresource-grafana-dashboard-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 data:
   gpu.json: |-
@@ -652,19 +652,19 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: specialresource-grafana
-  name: specialresource-grafana
+    app: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+  name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   namespace: openshift-sro
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: specialresource-grafana
+      app: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   template:
     metadata:
       labels:
-        app: specialresource-grafana
-      name: specialresource-grafana
+        app: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
     spec:
       affinity:
         nodeAffinity:
@@ -683,21 +683,21 @@ spec:
           containerPort: 3000
         volumeMounts:
         - mountPath: /etc/grafana/provisioning/datasources
-          name: specialresource-grafana
+          name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
         - mountPath: /etc/grafana/provisioning/dashboards
-          name: specialresource-grafana-dashboards
+          name: specialresource-grafana-dashboards-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 
         - mountPath: /grafana-dashboard-definitions/0/gpu
-          name: specialresource-grafana-dashboard-gpu
+          name: specialresource-grafana-dashboard-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
           readOnly: false
 
       volumes:
-      - name: specialresource-grafana
+      - name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
         configMap:
-          name: specialresource-grafana
-      - name: specialresource-grafana-dashboards
+          name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      - name: specialresource-grafana-dashboards-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
         configMap:
-          name: specialresource-grafana-dashboards
-      - name: specialresource-grafana-dashboard-gpu
+          name: specialresource-grafana-dashboards-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      - name: specialresource-grafana-dashboard-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
         configMap:
-          name: specialresource-grafana-dashboard-gpu
+          name: specialresource-grafana-dashboard-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE

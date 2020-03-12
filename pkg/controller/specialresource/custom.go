@@ -47,7 +47,7 @@ func getPromURLPass(obj *unstructured.Unstructured, r *ReconcileSpecialResource)
 	return promURL, promPass, nil
 }
 
-func prefixNVIDIAgrafanaConfigMap(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+func customGrafanaConfigMap(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 
 	promData, found, err := unstructured.NestedString(obj.Object, "data", "ocp-prometheus.yml")
 	checkNestedFields(found, err)
