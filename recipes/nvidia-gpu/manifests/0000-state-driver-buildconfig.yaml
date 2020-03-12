@@ -3,8 +3,6 @@ kind: ImageStream
 metadata:
   labels:
     app: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  annotations:
-    specialresource.openshift.io/inject-runtime-info: "true"
   name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
 spec: {}
 ---
@@ -16,7 +14,6 @@ metadata:
   name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   annotations:
     specialresource.openshift.io/wait: "true"
-    specialresource.openshift.io/inject-runtime-info: "true"
     specialresource.openshift.io/driver-container-vendor: SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE    
 spec:
   nodeSelector:

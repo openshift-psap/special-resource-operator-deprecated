@@ -131,7 +131,6 @@ metadata:
   annotations: 
     specialresource.openshift.io/state: "device-monitoring"
     specialresource.openshift.io/wait: "true"
-    specialresource.openshift.io/inject-runtime-info: "true"
 spec:
   selector:
     matchLabels:

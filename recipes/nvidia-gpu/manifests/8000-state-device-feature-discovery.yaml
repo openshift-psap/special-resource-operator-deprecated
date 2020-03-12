@@ -43,7 +43,6 @@ metadata:
   name: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
   annotations:
     specialresource.openshift.io/wait: "true"
-    specialresource.openshift.io/inject-runtime-info: "true"
   labels:
     app.kubernetes.io/name: specialresource-feature-discovery-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
     app.kubernetes.io/version: 1.0.0-alpha

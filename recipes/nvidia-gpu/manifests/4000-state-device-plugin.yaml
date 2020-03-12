@@ -68,7 +68,6 @@ metadata:
     openshift.io/scc: hostmount-anyuid
     specialresource.openshift.io/state: "device-plugin"
     specialresource.openshift.io/wait: "true"
-    specialresource.openshift.io/inject-runtime-info: "true"
 spec:
   selector:
     matchLabels:

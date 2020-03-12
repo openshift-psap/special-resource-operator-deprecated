@@ -69,7 +69,6 @@ metadata:
   annotations:
     specialresource.openshift.io/state: "runtime-enablement"
     specialresource.openshift.io/wait: "true"
-    specialresource.openshift.io/inject-runtime-info: "true"
 spec:
   selector:
     matchLabels:
