@@ -1,14 +1,12 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
 rules:
 - apiGroups:
   - security.openshift.io
@@ -22,40 +20,25 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
 subjects:
 - kind: ServiceAccount
-  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
 userNames:
-- system:serviceaccount:openshift-sro:specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+- system:serviceaccount:{{.OperatorNamespace}}:{{.HardwareResource}}-{{.GroupName.DriverContainer}}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-entrypoint
-  namespace: openshift-sro
+  name: {{.HardwareResource}}-{{.GroupName.DriverContainer}}-entrypoint
 data:
   entrypoint.sh: |-
     #!/bin/bash
-    LOG_FILE=/tmp/nvidia-driver-log
-
-    nvidia-driver init | tee $LOG_FILE 2>&1 &
-
-    while [ $? -ne 0 ]
-    do 
-            grep  "+ wait [0-9]*" $LOG_FILE
-    done 
-
-    touch /tmp/nvidia-driver-ready
-
-    wait
+    nvidia-driver init 
 ---
 # Please edit the object below. Lines beginning with a '#' will be ignored,
 # and an empty file will abort the edit. If an error occurs while saving this file will be
@@ -88,7 +71,7 @@ metadata:
       any SELinux context.  WARNING: this is the most relaxed SCC and should be used
       only for cluster administration. Grant with caution.'
 
-  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+  name: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
 priority: null
 readOnlyRootFilesystem: false
 requiredDropCapabilities: null
@@ -101,7 +84,7 @@ seccompProfiles:
 supplementalGroups:
   type: RunAsAny
 users:
-- system:serviceaccount:openshift-sro:specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+- system:serviceaccount:{{.OperatorNamespace}}:{{.HardwareResource}}-{{.GroupName.DriverContainer}}
 volumes:
 - '*'
 ---
@@ -109,19 +92,18 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
-    app: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+    app: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
+  name: {{.HardwareResource}}-{{.GroupName.DriverContainer}}-{{.OperatingSystem}}
   annotations:
-    openshift.io/scc: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+    openshift.io/scc: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
     specialresource.openshift.io/wait: "true"
     specialresrouce.openshift.io/wait-for-logs: "\\+ wait \\d+|\\+ sleep infinity"
     specialresource.openshift.io/state: "driver-container"
-    specialresource.openshift.io/driver-container-vendor: SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE    
+    specialresource.openshift.io/driver-container-vendor: {{.NodeFeature}}    
 spec:
   selector:
     matchLabels:
-      app: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      app: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
   template:
     metadata:
       # Mark this pod as a critical add-on; when enabled, the critical add-on scheduler
@@ -130,27 +112,27 @@ spec:
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ""
       labels:
-        app: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+        app: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
     spec:
       tolerations:
       - operator: Exists
       - key: nvidia.com/gpu
         operator: Exists
         effect: NoSchedule
-      serviceAccount: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-      serviceAccountName: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      serviceAccount: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
+      serviceAccountName: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
       hostPID: true
       containers:
-      - image: image-registry.openshift-image-registry.svc:5000/openshift-sro/specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE:vSPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION
+      - image: image-registry.openshift-image-registry.svc:5000/{{.OperatorNamespace}}/{{.HardwareResource}}-{{.GroupName.DriverContainer}}:v{{.KernelVersion}}
         imagePullPolicy: Always
-        name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-ctr
+        name: {{.HardwareResource}}-{{.GroupName.DriverContainer}}-{{.OperatingSystem}}
         command: ["/bin/entrypoint.sh"]
         securityContext:
           privileged: true
           seLinuxOptions:
             level: "s0"
         volumeMounts:
-          - name: run-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+          - name: run-{{.HardwareResource}}
             mountPath: /run/nvidia
             mountPropagation: Bidirectional
           - name: entrypoint
@@ -165,14 +147,14 @@ spec:
           failureThreshold: 60
           periodSeconds: 10
       volumes:
-        - name: run-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+        - name: run-{{.HardwareResource}}
           hostPath:
             path: /run/nvidia
         - name: entrypoint
           configMap:
             defaultMode: 0700
-            name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE-entrypoint
+            name: {{.HardwareResource}}-{{.GroupName.DriverContainer}}-entrypoint
       nodeSelector:
         node-role.kubernetes.io/worker: ""
-        SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE: "true"
-        feature.node.kubernetes.io/kernel-version.full: "SPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION"
+        {{.NodeFeature}}: "true"
+        feature.node.kubernetes.io/kernel-version.full: "{{.KernelVersion}}"

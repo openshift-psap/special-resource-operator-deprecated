@@ -2,23 +2,23 @@ apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
   labels:
-    app: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+    app: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
+  name: {{.HardwareResource}}-{{.GroupName.DriverContainer}}
 spec: {}
 ---
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
   labels:
-    app: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE 
-  name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+    app: {{.HardwareResource}}-{{.GroupName.DriverBuild}} 
+  name: {{.HardwareResource}}-{{.GroupName.DriverBuild}}
   annotations:
     specialresource.openshift.io/wait: "true"
-    specialresource.openshift.io/driver-container-vendor: SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE    
+    specialresource.openshift.io/driver-container-vendor: {{.NodeFeature}}    
 spec:
   nodeSelector:
     node-role.kubernetes.io/worker: ""
-    SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE: "true"
+    {{.NodeFeature}}: "true"
   runPolicy: "Serial"
   triggers:
     - type: "ConfigChange"
@@ -27,7 +27,7 @@ spec:
     git:
       ref: master
       uri: https://gitlab.com/nvidia/driver.git
-    contextDir: SPECIALRESOURCE.OPENSHIFT.IO.OPERATINGSYSTEM
+    contextDir: {{.OperatingSystem}}
     type: Git
   strategy:
     dockerStrategy:
@@ -37,4 +37,4 @@ spec:
   output:
     to:
       kind: ImageStreamTag
-      name: specialresource-driver-container-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE:vSPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION
+      name: {{.HardwareResource}}-{{.GroupName.DriverContainer}}:v{{.KernelVersion}}

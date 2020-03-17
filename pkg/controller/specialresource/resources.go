@@ -1,7 +1,9 @@
 package specialresource
 
 import (
+	"bytes"
 	"context"
+	"html/template"
 	"os"
 	"path/filepath"
 	"sort"
@@ -37,12 +39,6 @@ var (
 		list:  &unstructured.UnstructuredList{},
 		count: 0xDEADBEEF,
 	}
-	operatingSystem  = ""
-	kernelVersion    = ""
-	clusterVersion   = ""
-	updateVendor     = ""
-	nodeFeature      = ""
-	hardwareResource = ""
 )
 
 // Add3dpartyResourcesToScheme Adds 3rd party resources To the operator
@@ -78,13 +74,6 @@ func filePathWalkDir(root string) ([]string, error) {
 	return files, err
 }
 
-func exitOnError(err error) {
-	if err != nil {
-		log.Info("Exiting On Error", "error", err)
-		os.Exit(1)
-	}
-}
-
 func cacheNodes(r *ReconcileSpecialResource, force bool) (*unstructured.UnstructuredList, error) {
 
 	// The initial list is what we're working with
@@ -99,7 +88,7 @@ func cacheNodes(r *ReconcileSpecialResource, force bool) (*unstructured.Unstruct
 	node.list.SetKind("NodeList")
 
 	opts := &client.ListOptions{}
-	opts.SetLabelSelector(nodeFeature + "=true")
+	opts.SetLabelSelector(runInfo.NodeFeature + "=true")
 
 	err := r.client.List(context.TODO(), opts, node.list)
 	if err != nil {
@@ -169,39 +158,47 @@ func ReconcileHardwareConfigurations(r *ReconcileSpecialResource) error {
 		return errs.Wrap(err, "Error reconciling Hardware Configuration (states, Specialresource)")
 	}
 
-	node.list, err = cacheNodes(r, false)
-	exitOnError(errs.Wrap(err, "Failed to cache Nodes"))
-
-	operatingSystem, err = getOperatingSystem()
-	exitOnError(errs.Wrap(err, "Failed to get operating system"))
-
-	kernelVersion, err = getKernelVersion()
-	exitOnError(errs.Wrap(err, "Failed to get kernel version"))
-
-	clusterVersion, err = getClusterVersion()
-	exitOnError(errs.Wrap(err, "Failed to get cluster version"))
-
 	for _, config := range configs.Items {
 
 		var found bool
-		annotations := config.GetAnnotations()
 
+		annotations := config.GetAnnotations()
 		log.Info("Found Hardware Configuration", "Name", config.GetName())
 
-		if nodeFeature, found = annotations["specialresource.openshift.io/nfd"]; !found || len(nodeFeature) == 0 {
-			return errs.New("ConfigMap has no specialresource.openshift.io/nfd annotation cannot determine the device")
+		short := "specialresource.openshift.io/nfd"
+		if runInfo.NodeFeature, found = annotations[short]; !found || len(runInfo.NodeFeature) == 0 {
+			return errs.New("ConfigMap has no " + short + " annotation cannot determine the device")
 		}
-		log.Info("NFD", "nodeFeature", nodeFeature)
+		short = "specialresource.openshift.io/hardware"
+		if runInfo.HardwareResource, found = annotations[short]; !found || len(runInfo.HardwareResource) == 0 {
+			return errs.New("ConfigMap has no " + short + " annotation cannot determine the vendor-specialresource")
+		}
 
-		if hardwareResource, found = annotations["specialresource.openshift.io/hardware"]; !found || len(hardwareResource) == 0 {
-			return errs.New("ConfigMap has no specialresource.openshift.io/hardware annotation cannot determine the vendor-specialresource")
-		}
-		log.Info("Hardware", "hardwareResource", hardwareResource)
+		node.list, err = cacheNodes(r, false)
+		exitOnError(errs.Wrap(err, "Failed to cache Nodes"))
+
+		getRuntimeInformation(r)
+		logRuntimeInformation()
 
 		if err := ReconcileHardwareStates(r, config); err != nil {
 			return errs.Wrap(err, "Cannot reconcile hardware states")
 		}
 	}
+
+	return nil
+}
+
+func templateSpecialResourceInformation(yamlSpec *[]byte) error {
+
+	spec := string(*yamlSpec)
+
+	t := template.Must(template.New("runtime").Parse(spec))
+	var buff bytes.Buffer
+	if err := t.Execute(&buff, runInfo); err != nil {
+		return errs.Wrap(err, "Cannot templatize spec for resource info injection, check manifest")
+	}
+
+	*yamlSpec = buff.Bytes()
 
 	return nil
 }
@@ -214,15 +211,15 @@ func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 	for scanner.Scan() {
 
 		yamlSpec := scanner.Bytes()
+
+		err := templateSpecialResourceInformation(&yamlSpec)
+		exitOnError(errs.Wrap(err, "Cannot inject special resource information"))
+
 		obj := &unstructured.Unstructured{}
 		jsonSpec, err := yaml.YAMLToJSON(yamlSpec)
 		if err != nil {
-			return errs.Wrap(err, "Could not convert yaml file to json")
+			return errs.Wrap(err, "Could not convert yaml file to json"+string(yamlSpec))
 		}
-
-		err = injectRuntimeInformation(&jsonSpec)
-		exitOnError(errs.Wrap(err, "Cannot inject runtime information"))
-
 		err = obj.UnmarshalJSON(jsonSpec)
 		exitOnError(errs.Wrap(err, "Cannot unmarshall json spec, check your manifests"))
 
@@ -334,7 +331,9 @@ func CRUD(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 	logger.Info("Found, updating")
 	required := obj.DeepCopy()
 
-	// required.ResourceVersion = found.ResourceVersion
+	// required.ResourceVersion = found.ResourceVersion this is only needed
+	// before we update a resource, we do not care when creating, hence
+	// !leave this here!
 	if err := updateResourceVersion(required, found); err != nil {
 		return errs.Wrap(err, "Couldn't Update ResourceVersion")
 	}
@@ -354,11 +353,11 @@ func rebuildDriverContainer(obj *unstructured.Unstructured, r *ReconcileSpecialR
 		annotations := obj.GetAnnotations()
 		if vendor, ok := annotations["specialresource.openshift.io/driver-container-vendor"]; ok {
 			logger.Info("driver-container-vendor", "vendor", vendor)
-			if vendor == updateVendor {
-				logger.Info("vendor == updateVendor", "vendor", vendor, "updateVendor", updateVendor)
+			if vendor == runInfo.UpdateVendor {
+				logger.Info("vendor == updateVendor", "vendor", vendor, "updateVendor", runInfo.UpdateVendor)
 				return nil
 			}
-			logger.Info("vendor != updateVendor", "vendor", vendor, "updateVendor", updateVendor)
+			logger.Info("vendor != updateVendor", "vendor", vendor, "updateVendor", runInfo.UpdateVendor)
 			return errs.New("vendor != updateVendor")
 		}
 		logger.Info("No label driver-container-vendor found")

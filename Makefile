@@ -1,22 +1,23 @@
-REGISTRY       ?= quay.io
-ORG            ?= openshift-psap
-TAG            ?= $(shell git branch | grep \* | cut -d ' ' -f2)
-IMAGE          ?= $(REGISTRY)/$(ORG)/special-resource-operator:$(TAG)
-NAMESPACE      ?= openshift-sro
-PULLPOLICY     ?= IfNotPresent
-TEMPLATE_CMD    = sed 's+REPLACE_IMAGE+$(IMAGE)+g; s+REPLACE_NAMESPACE+$(NAMESPACE)+g; s+Always+$(PULLPOLICY)+'
-DEPLOY_OBJECTS  = namespace.yaml service_account.yaml role.yaml role_binding.yaml operator.yaml
-DEPLOY_CRD      = crds/sro.openshift.io_specialresources_crd.yaml 
-DEPLOY_CR       = crds/sro_v1alpha1_specialresource_cr.yaml
+REGISTRY         ?= quay.io
+ORG              ?= openshift-psap
+TAG              ?= $(shell git branch | grep \* | cut -d ' ' -f2)
+IMAGE            ?= $(REGISTRY)/$(ORG)/special-resource-operator:$(TAG)
+NAMESPACE        ?= openshift-sro
+PULLPOLICY       ?= IfNotPresent
+TEMPLATE_CMD      = sed 's+REPLACE_IMAGE+$(IMAGE)+g; s+REPLACE_NAMESPACE+$(NAMESPACE)+g; s+Always+$(PULLPOLICY)+'
+DEPLOY_NAMESPACE  = namespace.yaml
+DEPLOY_OBJECTS    = service_account.yaml role.yaml role_binding.yaml operator.yaml
+DEPLOY_CRD        = crds/sro.openshift.io_specialresources_crd.yaml 
+DEPLOY_CR         = crds/sro_v1alpha1_specialresource_cr.yaml
 
-PACKAGE         = github.com/openshift-psap/special-resource-operator
-MAIN_PACKAGE    = $(PACKAGE)/cmd/manager
-SPECIALRESOURCE ?= nvidia-gpu
-DOCKERFILE      = Dockerfile
-ENVVAR          = GOOS=linux CGO_ENABLED=0
-GOOS            = linux
-GO111MODULE     = auto
-GO_BUILD_RECIPE = GO111MODULE=$(GO111MODULE) GOOS=$(GOOS) go build -mod=vendor -o $(BIN) $(MAIN_PACKAGE)
+PACKAGE           = github.com/openshift-psap/special-resource-operator
+MAIN_PACKAGE      = $(PACKAGE)/cmd/manager
+SPECIALRESOURCE  ?= nvidia-gpu
+DOCKERFILE        = Dockerfile
+ENVVAR            = GOOS=linux CGO_ENABLED=0
+GOOS              = linux
+GO111MODULE       = auto
+GO_BUILD_RECIPE   = GO111MODULE=$(GO111MODULE) GOOS=$(GOOS) go build -mod=vendor -o $(BIN) $(MAIN_PACKAGE)
 
 TEST_RESOURCES  = $(shell mktemp -d)/test-init.yaml
 
@@ -49,13 +50,17 @@ $(DEPLOY_CRD):
 deploy-crd: $(DEPLOY_CRD) 
 	@sleep 1 
 
+$(DEPLOY_NAMESPACE): deploy-crd 
+	@$(TEMPLATE_CMD) deploy/$@ | kubectl apply -f -
+
+
 deploy-objects: deploy-crd
 	@for obj in $(DEPLOY_OBJECTS) $(DEPLOY_CR); do               \
 		$(TEMPLATE_CMD) deploy/$$obj | kubectl apply -f - ; \
 	done 
 
 
-deploy: deploy-objects
+deploy: $(DEPLOY_NAMESPACE) $(SPECIALRESOURCE) deploy-objects
 	@$(TEMPLATE_CMD) deploy/$(DEPLOY_CR) | kubectl apply -f -
 
 include recipes/$(SPECIALRESOURCE)/config/Makefile

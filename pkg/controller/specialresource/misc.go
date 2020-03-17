@@ -27,3 +27,10 @@ func checkNestedFields(found bool, err error) {
 		os.Exit(1)
 	}
 }
+
+func exitOnError(err error) {
+	if err != nil {
+		log.Info("Exiting On Error", "error", err)
+		os.Exit(1)
+	}
+}

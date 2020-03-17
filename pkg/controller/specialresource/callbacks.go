@@ -19,14 +19,13 @@ type resourceCallbacks map[string]func(obj *unstructured.Unstructured, r *Reconc
 
 var customCallback resourceCallbacks
 
-
 func beforeCRUDhooks(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 
-	var ok bool
+	var found bool
 	todo := ""
 	annotations := obj.GetAnnotations()
 
-	if todo, ok = annotations["specialresource.openshift.io/callback"]; !ok {
+	if todo, found = annotations["specialresource.openshift.io/callback"]; !found {
 		return nil
 	}
 
@@ -119,13 +118,13 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 		if reason == "ImagePullBackOff" || reason == "ErrImagePull" {
 			annotations := obj.GetAnnotations()
 			if vendor, ok := annotations["specialresource.openshift.io/driver-container-vendor"]; ok {
-				updateVendor = vendor
-				return fmt.Errorf("ImagePullBackOff need to rebuild %s driver-container", updateVendor)
+				runInfo.UpdateVendor = vendor
+				return fmt.Errorf("ImagePullBackOff need to rebuild %s driver-container", runInfo.UpdateVendor)
 			}
 		}
 
 		log.Info("Unsetting updateVendor, Pods not in ImagePullBackOff or ErrImagePull")
-		updateVendor = ""
+		runInfo.UpdateVendor = ""
 		return nil
 	}
 

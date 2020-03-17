@@ -1,30 +1,28 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
   labels:
-    metrics-infra: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-    name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+    metrics-infra: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
+    name: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
 spec:
   ports:
-  - name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+  - name: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
     port: 3000
     protocol: TCP
     targetPort: 3000
   selector:
-    app: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+    app: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
 spec:
   host: ""
   to:
     kind: Service
-    name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+    name: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
     weight: 100
   port:
     targetPort: 3000
@@ -32,10 +30,9 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
   annotations:
-    specialresource.openshift.io/callback: specialresource-grafana-configmap
+    specialresource.openshift.io/callback: {{.GroupName.DeviceGrafana}}-configmap
 data:
   ocp-prometheus.yml: |
     apiVersion: 1
@@ -58,8 +55,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: specialresource-grafana-dashboards-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.GroupName.DeviceGrafana}}-dashboards-{{.HardwareResource}}
 data:
   dashboards.yaml: |-
     {
@@ -80,8 +76,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: specialresource-grafana-dashboard-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.GroupName.DeviceGrafana}}-dashboard-{{.HardwareResource}}
 data:
   gpu.json: |-
     {
@@ -652,52 +647,51 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+    app: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
+  name: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      app: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
   template:
     metadata:
       labels:
-        app: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-      name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+        app: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
+      name: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
     spec:
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: specialresource.openshift.io/device-monitoring-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+              - key: {{.StateName.DeviceMonitoring}}-{{.HardwareResource}}
                 operator: In 
                 values:
                 - ready 
       containers:
-      - name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      - name: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
         image: docker.io/grafana/grafana:master
         ports:
         - name: sc-grafana-http
           containerPort: 3000
         volumeMounts:
         - mountPath: /etc/grafana/provisioning/datasources
-          name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+          name: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
         - mountPath: /etc/grafana/provisioning/dashboards
-          name: specialresource-grafana-dashboards-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+          name: {{.GroupName.DeviceGrafana}}-dashboards-{{.HardwareResource}}
 
         - mountPath: /grafana-dashboard-definitions/0/gpu
-          name: specialresource-grafana-dashboard-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+          name: {{.GroupName.DeviceGrafana}}-dashboard-{{.HardwareResource}}
           readOnly: false
 
       volumes:
-      - name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      - name: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
         configMap:
-          name: specialresource-grafana-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-      - name: specialresource-grafana-dashboards-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+          name: {{.HardwareResource}}-{{.GroupName.DeviceGrafana}}
+      - name: {{.GroupName.DeviceGrafana}}-dashboards-{{.HardwareResource}}
         configMap:
-          name: specialresource-grafana-dashboards-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-      - name: specialresource-grafana-dashboard-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+          name: {{.GroupName.DeviceGrafana}}-dashboards-{{.HardwareResource}}
+      - name: {{.GroupName.DeviceGrafana}}-dashboard-{{.HardwareResource}}
         configMap:
-          name: specialresource-grafana-dashboard-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+          name: {{.GroupName.DeviceGrafana}}-dashboard-{{.HardwareResource}}

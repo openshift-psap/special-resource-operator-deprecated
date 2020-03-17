@@ -1,8 +1,14 @@
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{.OperatorNamespace}}
+  labels:
+    openshift.io/cluster-monitoring: "true"
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: specialresource-device-plugin-validation-entrypoint-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.GroupName.DevicePlugin}}-validation-entrypoint-{{.HardwareResource}}
 data:
   entrypoint.sh: |-
     #!/bin/bash
@@ -21,14 +27,12 @@ data:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
 rules:
 - apiGroups:
   - security.openshift.io
@@ -42,23 +46,21 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+  name: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+  name: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
 subjects:
 - kind: ServiceAccount
-  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+  name: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
 userNames:
-- system:serviceaccount:openshift-sro:specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+- system:serviceaccount:{{.OperatorNamespace}}:{{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: prometheus-k8s
-  namespace: openshift-sro
 rules:
  - apiGroups:
    - ""
@@ -75,7 +77,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: prometheus-k8s
-  namespace: openshift-sro
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -88,13 +89,12 @@ subjects:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: openshift-sro
-  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+  name: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
   labels:
-    app: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+    app: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
 spec:
   selector:
-    app: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+    app: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
   type: ClusterIP
   ports:
   - name: dcgm
@@ -105,18 +105,17 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  namespace: openshift-sro
-  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+  name: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
 spec:
   endpoints:
   - port: dcgm 
   jobLabel: app
   namespaceSelector:
     matchNames:
-    - openshift-sro
+    - {{.OperatorNamespace}}
   selector:
     matchLabels:
-      app: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      app: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
 ---
 # Node exporter collecting only GPU metrics from dcgm-exporter.
 # Except textfile collector, all other collectors that are enabled by default are disabled.
@@ -125,28 +124,27 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels: 
-    app: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-  namespace: openshift-sro
+    app: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
+  name: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
   annotations: 
     specialresource.openshift.io/state: "device-monitoring"
     specialresource.openshift.io/wait: "true"
 spec:
   selector:
     matchLabels:
-      app: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      app: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
   template:
     metadata:
       labels:
-        app: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-      name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+        app: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
+      name: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
     spec:
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: specialresource.openshift.io/device-plugin-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+              - key: {{.StateName.DevicePlugin}}-{{.HardwareResource}}
                 operator: In 
                 values:
                 - ready 
@@ -155,12 +153,12 @@ spec:
       - key: nvidia.com/gpu
         operator: Exists
         effect: NoSchedule
-      serviceAccount: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
-      serviceAccountName: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+      serviceAccount: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
+      serviceAccountName: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
       initContainers:
       - image: quay.io/openshift-psap/cuda-vector-add:v0.1
         imagePullPolicy: Always
-        name: specialresource-device-plugin-validation-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+        name: {{.GroupName.DevicePlugin}}-validation-{{.HardwareResource}}
         command: ["/bin/entrypoint.sh"]
         securityContext:
           allowPrivilegeEscalation: false
@@ -233,7 +231,7 @@ spec:
           readOnly: true
           mountPath: /run/prometheus
       - image: nvidia/dcgm-exporter:1.4.6
-        name: specialresource-metrics-exporter-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+        name: {{.HardwareResource}}-{{.GroupName.DeviceMonitoring}}
         securityContext:
           runAsNonRoot: false
           runAsUser: 0
@@ -257,11 +255,11 @@ spec:
       - name: init-entrypoint
         configMap:
           defaultMode: 0700
-          name: specialresource-device-plugin-validation-entrypoint-SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE
+          name: {{.GroupName.DevicePlugin}}-validation-entrypoint-{{.HardwareResource}}
 
       nodeSelector:
         node-role.kubernetes.io/worker: ""
-        SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE: "true"
+        {{.NodeFeature}}: "true"
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -269,7 +267,7 @@ metadata:
   labels:
     prometheus: example
     role: alert-rules
-  name: prometheus-example-rules
+  name: specialresource-prometheus-rules-{{.HardwareResource}}
 spec:
   groups:
   - name: nvidia_gpu.rules

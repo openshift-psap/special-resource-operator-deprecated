@@ -4,40 +4,84 @@ import (
 	"strings"
 
 	errs "github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func injectRuntimeInformation(jsonSpec *[]byte) error {
+type resourceGroupName struct {
+	DriverBuild            string
+	DriverContainer        string
+	RuntimeEnablement      string
+	DevicePlugin           string
+	DeviceMonitoring       string
+	DeviceGrafana          string
+	DeviceFeatureDiscovery string
+}
 
-	obj := &unstructured.Unstructured{}
+type resourceStateName struct {
+	DriverContainer   string
+	RuntimeEnablement string
+	DevicePlugin      string
+	DeviceMonitoring  string
+	/*
+		"driver-container":   {"specialresource.openshift.io/driver-container-" + hw: "ready"},
+		"runtime-enablement": {"specialresource.openshift.io/runtime-enablement-" + hw: "ready"},
+		"device-plugin":      {"specialresource.openshift.io/device-plugin-" + hw: "ready"},
+		"device-monitoring":  {"specialresource.openshift.io/device-monitoring-" + hw: "ready"},
+	*/
+}
 
-	err := obj.UnmarshalJSON(*jsonSpec)
-	exitOnError(errs.Wrap(err, "Cannot unmarshall json spec, check your manifests"))
+type runtimeInformation struct {
+	OperatingSystem   string
+	KernelVersion     string
+	ClusterVersion    string
+	UpdateVendor      string
+	NodeFeature       string
+	HardwareResource  string
+	OperatorNamespace string
 
-	// Since we're injecting the runtime information to almost all manifests we're skipping
-	/* here the check
-	annotations := obj.GetAnnotations()
-	if inject, ok := annotations["specialresource.openshift.io/inject-runtime-info"]; !ok || inject != "true" {
-		return nil
-	} */
+	GroupName resourceGroupName
+	StateName resourceStateName
+}
 
-	spec := string(*jsonSpec)
+var runInfo = runtimeInformation{
+	GroupName: resourceGroupName{
+		DriverBuild:            "driver-build",
+		DriverContainer:        "driver-container",
+		RuntimeEnablement:      "runtime-enablement",
+		DevicePlugin:           "device-plugin",
+		DeviceMonitoring:       "device-monitoring",
+		DeviceGrafana:          "device-grafana",
+		DeviceFeatureDiscovery: "device-feature-discovery",
+	},
+	StateName: resourceStateName{
+		DriverContainer:   "specialresource.openshift.io/driver-container",
+		RuntimeEnablement: "specialresource.openshift.io/runtime-enablement",
+		DevicePlugin:      "specialresource.openshift.io/device-plugin",
+		DeviceMonitoring:  "specialresource.openshift.io/device-monitoring",
+	},
+}
 
-	log.Info("Runtime Information", "operatingSystem", operatingSystem)
-	log.Info("Runtime Information", "kernelVersion", kernelVersion)
-	log.Info("Runtime Information", "clusterVersion", clusterVersion)
-	log.Info("Runtime Information", "updateVendor", updateVendor)
-	log.Info("Runtime Information", "nodeFeature", nodeFeature)
+func logRuntimeInformation() {
+	log.Info("Runtime Information", "OperatorNamespace", runInfo.OperatorNamespace)
+	log.Info("Runtime Information", "OperatingSystem", runInfo.OperatingSystem)
+	log.Info("Runtime Information", "KernelVersion", runInfo.KernelVersion)
+	log.Info("Runtime Information", "ClusterVersion", runInfo.ClusterVersion)
+	log.Info("Runtime Information", "UpdateVendor", runInfo.UpdateVendor)
+	log.Info("Runtime Information", "NodeFeature", runInfo.NodeFeature)
+}
 
-	pattern := strings.NewReplacer(
-		"SPECIALRESOURCE.OPENSHIFT.IO.HARDWARE", hardwareResource,
-		"SPECIALRESOURCE.OPENSHIFT.IO.OPERATINGSYSTEM", operatingSystem,
-		"SPECIALRESOURCE.OPENSHIFT.IO.KERNELVERSION", kernelVersion,
-		"SPECIALRESOURCE.OPENSHIFT.IO.CLUSTERVERSION", clusterVersion,
-		"SPECIALRESOURCE.OPENSHIFT.IO.NODEFEATURE", nodeFeature)
+func getRuntimeInformation(r *ReconcileSpecialResource) {
 
-	*jsonSpec = []byte(pattern.Replace(spec))
-	return nil
+	var err error
+	runInfo.OperatingSystem, err = getOperatingSystem()
+	exitOnError(errs.Wrap(err, "Failed to get operating system"))
+
+	runInfo.KernelVersion, err = getKernelVersion()
+	exitOnError(errs.Wrap(err, "Failed to get kernel version"))
+
+	runInfo.ClusterVersion, err = getClusterVersion()
+	exitOnError(errs.Wrap(err, "Failed to get cluster version"))
+
+	runInfo.OperatorNamespace = r.specialresource.GetNamespace()
 }
 
 func getOperatingSystem() (string, error) {
@@ -87,16 +131,18 @@ func renderOperatingSystem(rel string, ver string) string {
 
 func getKernelVersion() (string, error) {
 
-	var ok bool
+	var found bool
 	var kernelVersion string
 	// Assuming all nodes are running the same kernel version,
 	// one could easily add driver-kernel-versions for each node.
 	for _, node := range node.list.Items {
 		labels := node.GetLabels()
 
-		// We only need to check for the key, the value is available if the key is there
-		if kernelVersion, ok = labels["feature.node.kubernetes.io/kernel-version.full"]; !ok {
-			return "", errs.New("Label feature.node.kubernetes.io/kernel-version.full not found is NFD running? Check node labels")
+		// We only need to check for the key, the value
+		// is available if the key is there
+		short := "feature.node.kubernetes.io/kernel-version.full"
+		if kernelVersion, found = labels[short]; !found {
+			return "", errs.New("Label " + short + " not found is NFD running? Check node labels")
 		}
 		break
 	}

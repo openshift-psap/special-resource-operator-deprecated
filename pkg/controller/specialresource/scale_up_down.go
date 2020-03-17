@@ -18,11 +18,14 @@ func labelNodesAccordingToState(obj *unstructured.Unstructured, r *ReconcileSpec
 
 	cacheNodes(r, true)
 
+	hw := runInfo.HardwareResource
+	st := runInfo.StateName
+
 	var stateLabels = map[string]map[string]string{
-		"driver-container":   {"specialresource.openshift.io/driver-container-" + hardwareResource: "ready"},
-		"runtime-enablement": {"specialresource.openshift.io/runtime-enablement-" + hardwareResource: "ready"},
-		"device-plugin":      {"specialresource.openshift.io/device-plugin-" + hardwareResource: "ready"},
-		"device-monitoring":  {"specialresource.openshift.io/device-monitoring-" + hardwareResource: "ready"},
+		"driver-container":   {st.DriverContainer + "-" + hw: "ready"},
+		"runtime-enablement": {st.RuntimeEnablement + "-" + hw: "ready"},
+		"device-plugin":      {st.DevicePlugin + "-" + hw: "ready"},
+		"device-monitoring":  {st.DeviceMonitoring + "-" + hw: "ready"},
 	}
 
 	for _, node := range node.list.Items {
