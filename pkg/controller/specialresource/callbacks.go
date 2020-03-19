@@ -39,19 +39,19 @@ func afterCRUDhooks(obj *unstructured.Unstructured, r *ReconcileSpecialResource)
 
 	annotations := obj.GetAnnotations()
 
-	if state, ok := annotations["specialresource.openshift.io/state"]; ok && state == "driver-container" {
+	if state, found := annotations["specialresource.openshift.io/state"]; found && state == "driver-container" {
 		if err := checkForImagePullBackOff(obj, r); err != nil {
 			return err
 		}
 	}
 
-	if wait, ok := annotations["specialresource.openshift.io/wait"]; ok && wait == "true" {
+	if wait, found := annotations["specialresource.openshift.io/wait"]; found && wait == "true" {
 		if err := waitForResource(obj, r); err != nil {
 			return err
 		}
 	}
 
-	if pattern, ok := annotations["specialresrouce.openshift.io/wait-for-logs"]; ok && len(pattern) > 0 {
+	if pattern, found := annotations["specialresrouce.openshift.io/wait-for-logs"]; found && len(pattern) > 0 {
 		if err := waitForDaemonSetLogs(obj, r, pattern); err != nil {
 			return err
 		}

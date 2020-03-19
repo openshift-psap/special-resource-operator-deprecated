@@ -1,8 +1,10 @@
+SPECIALRESOURCE  ?= nvidia-gpu
+
 REGISTRY         ?= quay.io
 ORG              ?= openshift-psap
 TAG              ?= $(shell git branch | grep \* | cut -d ' ' -f2)
 IMAGE            ?= $(REGISTRY)/$(ORG)/special-resource-operator:$(TAG)
-NAMESPACE        ?= openshift-sro
+NAMESPACE        ?= $(SPECIALRESOURCE)
 PULLPOLICY       ?= IfNotPresent
 TEMPLATE_CMD      = sed 's+REPLACE_IMAGE+$(IMAGE)+g; s+REPLACE_NAMESPACE+$(NAMESPACE)+g; s+Always+$(PULLPOLICY)+'
 DEPLOY_NAMESPACE  = namespace.yaml
@@ -12,7 +14,6 @@ DEPLOY_CR         = crds/sro_v1alpha1_specialresource_cr.yaml
 
 PACKAGE           = github.com/openshift-psap/special-resource-operator
 MAIN_PACKAGE      = $(PACKAGE)/cmd/manager
-SPECIALRESOURCE  ?= nvidia-gpu
 DOCKERFILE        = Dockerfile
 ENVVAR            = GOOS=linux CGO_ENABLED=0
 GOOS              = linux

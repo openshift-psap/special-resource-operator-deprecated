@@ -212,7 +212,16 @@ func waitForDaemonSetLogs(obj *unstructured.Unstructured, r *ReconcileSpecialRes
 	pods.SetKind("pod")
 
 	label := make(map[string]string)
-	label["app"] = obj.GetName()
+
+	var found bool
+	var selector string
+
+	if selector, found = obj.GetLabels()["app"]; !found {
+		errs.New("Cannot find Label app=, missing take a look at the manifests")
+	}
+
+	log.Info("Looking for Pods with label app=" + selector)
+	label["app"] = selector
 
 	opts := &client.ListOptions{}
 	opts.InNamespace(r.specialresource.Namespace)
