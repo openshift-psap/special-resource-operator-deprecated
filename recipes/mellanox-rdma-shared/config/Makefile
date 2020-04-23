@@ -1,5 +1,3 @@
-
-
 mellanox-rdma-shared: 
 	-kubectl delete configmap -n $(NAMESPACE) 0000-$@-mofed
 	kubectl create configmap 0000-$@-mofed -n $(NAMESPACE) --from-file=recipes/$@/manifests/mofed
