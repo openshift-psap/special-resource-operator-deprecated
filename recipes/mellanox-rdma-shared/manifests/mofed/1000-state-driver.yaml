@@ -59,6 +59,21 @@ data:
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
     trap "unmount_rootfs" EXIT
         
+    modprobe -r rpcrdma ib_srpt ib_isert rdma_cm
+    modprobe -r i40iw ib_core
+    /etc/init.d/openibd stop
+    modprobe -d /host tls
+    modprobe ib_core 
+    modprobe ib_uverbs 
+    modprobe mlx5_core
+    modprobe mlx5_ib
+    modprobe mst_pci
+    modprobe mst_pciconf
+    ibv_devinfo
+    mst start
+    mst status -v
+       
+
     sleep infinity
 ---
 # Please edit the object below. Lines beginning with a '#' will be ignored,

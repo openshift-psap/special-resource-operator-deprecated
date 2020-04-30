@@ -125,9 +125,10 @@ func renderOperatingSystem(rel string, maj string, min string) (string, string, 
 
 		num, _ := strconv.Atoi(min)
 
-		if strings.Compare(maj, "4") == 0 && num < 2 {
+		if strings.Compare(maj, "4") == 0 && num < 4 {
 			maj := "8"
 			return rel + maj, rel + maj + ".0", nil
+
 		}
 		maj := "8"
 		return rel + maj, rel + maj + ".1", nil
