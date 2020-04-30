@@ -66,8 +66,9 @@ data:
     rpmbuild --rebuild /tmp/nvidia_peer_memory-*
 
     #COPY --from=BUILDER /root/rpmbuild/RPMS/x86_64/nvidia_peer_memory-*.rpm  .
-    dnf -y --setopt=install_weak_deps=False --best install kmod binutils perl
-    # rpm  -ivh /root/rpmbuild/RPMS/x86_64/nvidia_peer_memory-*.rpm 
+    #dnf -y --setopt=install_weak_deps=False --best install kmod binutils perl
+    
+    rpm  -ivh /root/rpmbuild/RPMS/x86_64/nvidia_peer_memory-*.rpm 
 
     sleep infinity
 ---

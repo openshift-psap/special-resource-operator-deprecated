@@ -57,7 +57,7 @@ data:
     modprobe -r rpcrdma ib_srpt ib_isert rdma_cm
     modprobe -r i40iw ib_core
     /etc/init.d/openibd stop
-    modprobe -d /host tls
+    modprobe tls
     modprobe ib_core
     modprobe mlx5_core
     modprobe mlx5_ib

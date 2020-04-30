@@ -77,6 +77,7 @@ data:
     make KVER=${KERNEL_VERSION}
     sed -i 's/sudo//g' insmod.sh
 
+    ./insmod.sh
         
     sleep infinity
 ---
