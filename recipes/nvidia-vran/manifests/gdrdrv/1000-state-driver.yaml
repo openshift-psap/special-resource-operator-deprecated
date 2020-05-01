@@ -23,17 +23,12 @@ metadata:
   name: {{.HardwareResource}}-storage-claim
 spec:
   accessModes:
-  - ReadWriteMany
+     - ReadWriteMany
   resources:
     requests:
       storage: 100Gi
   volumeMode: Filesystem
   volumeName: registry
-status:
-  accessModes:
-  - ReadWriteMany
-  capacity:
-    storage: 100Gi
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
