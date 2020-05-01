@@ -69,6 +69,10 @@ data:
 
     
     cd /root/pvol/dpdk/kernel/linux/gdrdrv/x86_64
+
+    ## find does not work with nvidia-* has to be nvidia-*/ weird
+    sed -i 's/nvidia-*/nvidia-*\//g' Makefile
+
     make KVER=${KERNEL_VERSION}
     sed -i 's/sudo//g' insmod.sh
 
