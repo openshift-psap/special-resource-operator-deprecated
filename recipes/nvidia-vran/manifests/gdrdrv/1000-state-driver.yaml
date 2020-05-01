@@ -68,7 +68,8 @@ data:
     ln -sf ${NVIDIA}/lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}/.
 
     
-    cd /root/pvol/dpdk/kernel/linux/gdrdrv/x86_64
+    cp -r /root/pvol/dpdk/kernel/linux/gdrdrv/x86_64 gdrdrv 
+    cd gdrdrv
 
     ## find does not work with nvidia-* has to be nvidia-*/ weird
     sed -i 's/nvidia-*/nvidia-*\//g' Makefile
