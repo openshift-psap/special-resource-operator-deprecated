@@ -138,7 +138,7 @@ metadata:
   annotations:
     openshift.io/scc: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
     specialresource.openshift.io/wait: "true"
-   .SpecialResource.openshift.io/wait-for-logs: "\\+ sleep infinity"
+    specialResource.openshift.io/wait-for-logs: "\\+ sleep infinity"
     specialresource.openshift.io/state: "driver-container"
     specialresource.openshift.io/driver-container-vendor: {{.SpecialResource.Spec.Node.Selector}}    
 spec:
