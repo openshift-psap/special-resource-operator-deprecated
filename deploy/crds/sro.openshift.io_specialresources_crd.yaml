@@ -32,29 +32,15 @@ spec:
           description: SpecialResourceSpec defines the desired state of SpecialResource
           properties:
             dependsOn:
-              items:
-                description: SpecialResourceDependsOn defines the desired state of
-                  SpecialResource
-                properties:
-                  name:
+              description: SpecialResourceDependsOn defines the desired state of SpecialResource
+              properties:
+                name:
+                  items:
                     type: string
-                  status:
-                    description: SpecialResourceStatus defines the observed state
-                      of SpecialResource
-                    properties:
-                      state:
-                        description: 'INSERT ADDITIONAL STATUS FIELD - define observed
-                          state of cluster Important: Run "operator-sdk generate k8s"
-                          to regenerate code after modifying this file Add custom
-                          validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
-                        type: string
-                    required:
-                    - state
-                    type: object
-                required:
-                - name
-                type: object
-              type: array
+                  type: array
+              required:
+              - name
+              type: object
             driverContainer:
               description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
                 Important: Run "operator-sdk generate k8s" to regenerate code after

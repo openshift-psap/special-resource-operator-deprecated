@@ -183,21 +183,21 @@ func schema_pkg_apis_sro_v1alpha1_SpecialResourceDependsOn(ref common.ReferenceC
 				Properties: map[string]spec.Schema{
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"status": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/sro/v1alpha1.SpecialResourceStatus"),
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
 						},
 					},
 				},
 				Required: []string{"name"},
 			},
 		},
-		Dependencies: []string{
-			"./pkg/apis/sro/v1alpha1.SpecialResourceStatus"},
 	}
 }
 
@@ -403,14 +403,7 @@ func schema_pkg_apis_sro_v1alpha1_SpecialResourceSpec(ref common.ReferenceCallba
 					},
 					"dependsOn": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("./pkg/apis/sro/v1alpha1.SpecialResourceDependsOn"),
-									},
-								},
-							},
+							Ref: ref("./pkg/apis/sro/v1alpha1.SpecialResourceDependsOn"),
 						},
 					},
 				},
