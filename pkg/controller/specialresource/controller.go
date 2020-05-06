@@ -205,4 +205,5 @@ func getSpecialResourceByName(name string, list *srov1alpha1.SpecialResourceList
 			return specialresource
 		}
 	}
+	return srov1alpha1.SpecialResource{}
 }
