@@ -7,4 +7,4 @@ spec:
   node:
     selector: "feature.node.kubernetes.io/pci-10de.present"
   dependsOn:  
-  - name: nvidia-vran-mofed
+    name: ["nvidia-vran-mofed"]

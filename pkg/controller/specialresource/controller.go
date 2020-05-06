@@ -2,6 +2,7 @@ package specialresource
 
 import (
 	"context"
+	"fmt"
 
 	monitoringV1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	srov1alpha1 "github.com/openshift-psap/special-resource-operator/pkg/apis/sro/v1alpha1"
@@ -9,6 +10,7 @@ import (
 	imageV1 "github.com/openshift/api/image/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	secv1 "github.com/openshift/api/security/v1"
+	errs "github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -177,18 +179,30 @@ func (r *ReconcileSpecialResource) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{}, err
 	}
 
-	for _, r.specialresource = range specialresources.Items {
+	for _, specialresource := range specialresources.Items {
 
-		log.Info("Reconciling", "SpecialResurce", r.specialresource.Name)
-		log.Info("SpecialResurce", "DependsOn", r.specialresource.Spec.DependsOn.Name)
+		log.Info("Reconciling", "SpecialResurce", specialresource.Name)
+		log.Info("SpecialResurce", "DependsOn", specialresource.Spec.DependsOn.Name)
 
-		///if err := ReconcileHardwareConfigurations(r); err != nil {
-		// We do not want a stacktrace here, errs.Wrap already created
-		// breadcrumb of errors to follow. Just sprintf with %v rather than %+v
-		///	log.Info("Could not reconcile hardware configurations", "error", fmt.Sprintf("%v", err))
-		///	return reconcile.Result{}, errs.New("Reconciling failed")
-		///}
+		// Only one level dependency support for now
+		for _, dependency := range specialresource.Spec.DependsOn.Name {
+			r.specialresource = getSpecialResourceByName(dependency, &specialresources)
+			if err := ReconcileHardwareConfigurations(r); err != nil {
+				// We do not want a stacktrace here, errs.Wrap already created
+				// breadcrumb of errors to follow. Just sprintf with %v rather than %+v
+				log.Info("Could not reconcile hardware configurations", "error", fmt.Sprintf("%v", err))
+				return reconcile.Result{}, errs.New("Reconciling failed")
+			}
+		}
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func getSpecialResourceByName(name string, list *srov1alpha1.SpecialResourceList) srov1alpha1.SpecialResource {
+	for _, specialresource := range list.Items {
+		if specialresource.Name == name {
+			return specialresource
+		}
+	}
 }
