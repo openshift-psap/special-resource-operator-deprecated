@@ -5,6 +5,8 @@ import (
 )
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// operator-sdk generate k8s         -> API DeepCopy generation
+// operator-sdk generate openapi     -> CRD update with openapi
 
 // SpecialResourceImages defines the observed state of SpecialResource
 // +k8s:openapi-gen=true
@@ -61,9 +63,17 @@ type SpecialResourceGit struct {
 // SpecialResourceSource defines the observed state of SpecialResource
 // +k8s:openapi-gen=true
 type SpecialResourceSource struct {
-	Git       SpecialResourceGit        `json:"source,omitempty"`
+	Git SpecialResourceGit `json:"git,omitempty"`
+}
+
+// SpecialResourceDriverContainer defines the desired state of SpecialResource
+// +k8s:openapi-gen=true
+type SpecialResourceDriverContainer struct {
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
+	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+	Source    SpecialResourceSource     `json:"source,omitempty"`
 	BuildArgs []SpecialResourceBuilArgs `json:"buildArgs,omitempty"`
-	Node      SpecialResourceNode       `json:"node,omitempty"`
 	Artifacts SpecialResourceArtifacts  `json:"artifacts,omitempty"`
 }
 
@@ -73,7 +83,8 @@ type SpecialResourceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	Source SpecialResourceSource `json:"source,omitempty"`
+	DriverContainer SpecialResourceDriverContainer `json:"driverContainer,omitempty"`
+	Node            SpecialResourceNode            `json:"node,omitempty"`
 }
 
 // SpecialResourceStatus defines the observed state of SpecialResource

@@ -148,7 +148,7 @@ type ReconcileSpecialResource struct {
 	// that reads objects from the cache and writes to the apiserver
 	client          client.Client
 	scheme          *runtime.Scheme
-	specialresource *srov1alpha1.SpecialResource
+	specialresource srov1alpha1.SpecialResource
 }
 
 // Reconcile reads that state of the cluster for a SpecialResource object and makes changes based on the state read
@@ -163,11 +163,11 @@ func (r *ReconcileSpecialResource) Reconcile(request reconcile.Request) (reconci
 	reqLogger.Info("Reconciling SpecialResource")
 
 	// Fetch the SpecialResource instance
-	specialresources := &srov1alpha1.SpecialResourceList{}
+	specialresources := srov1alpha1.SpecialResourceList{}
 	opts := &client.ListOptions{}
 	opts.InNamespace(request.Namespace)
 
-	err := r.client.List(context.TODO(), opts, specialresources)
+	err := r.client.List(context.TODO(), opts, &specialresources)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -179,8 +179,10 @@ func (r *ReconcileSpecialResource) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{}, err
 	}
 
-	for _, *r.specialresource = range specialresources.Items {
-		log.Info("Reconciling", "SpecialResurce")
+	for _, r.specialresource = range specialresources.Items {
+
+		log.Info("Reconciling", "SpecialResurce", r.specialresource.Name)
+
 		if err := ReconcileHardwareConfigurations(r); err != nil {
 			// We do not want a stacktrace here, errs.Wrap already created
 			// breadcrumb of errors to follow. Just sprintf with %v rather than %+v

@@ -88,7 +88,7 @@ func cacheNodes(r *ReconcileSpecialResource, force bool) (*unstructured.Unstruct
 	node.list.SetKind("NodeList")
 
 	opts := &client.ListOptions{}
-	opts.SetLabelSelector(runInfo.NodeFeature + "=true")
+	opts.SetLabelSelector(r.specialresource.Spec.Node.Selector + "=true")
 
 	err := r.client.List(context.TODO(), opts, node.list)
 	if err != nil {
@@ -100,12 +100,13 @@ func cacheNodes(r *ReconcileSpecialResource, force bool) (*unstructured.Unstruct
 
 func getHardwareConfiguration(r *ReconcileSpecialResource) (*unstructured.Unstructured, error) {
 
-	log.Info("Looking for Hardware Configuration ConfigMap for", "SpecialResource", r.specialresource.Name)
+	log.Info("Looking for Hardware Configuration ConfigMap for", "SpecialResource", r.specialresource.GetName())
 	cm := &unstructured.Unstructured{}
 	cm.SetAPIVersion("v1")
 	cm.SetKind("ConfigMap")
 
-	err := r.client.Get(context.TODO(), types.NamespacedName{Namespace: r.specialresource.GetNamespace(), Name: r.specialresource.GetName()}, cm)
+	namespacedName := types.NamespacedName{Namespace: r.specialresource.Namespace, Name: r.specialresource.Name}
+	err := r.client.Get(context.TODO(), namespacedName, cm)
 	if apierrors.IsNotFound(err) {
 		return nil, errs.New("Hardware Configuration ConfigMap not found, see README and create the states for SpecialResource: " + r.specialresource.Name)
 	}
@@ -149,22 +150,10 @@ func ReconcileHardwareConfigurations(r *ReconcileSpecialResource) error {
 	var config *unstructured.Unstructured
 
 	if config, err = getHardwareConfiguration(r); err != nil {
-		return errs.Wrap(err, "Error reconciling Hardware Configuration (states, Specialresource)")
+		return errs.Wrap(err, "Error reconciling Hardware Configuration States")
 	}
 
-	var found bool
-
-	annotations := config.GetAnnotations()
-	log.Info("Found Hardware Configuration", "Name", config.GetName())
-
-	short := "specialresource.openshift.io/nfd"
-	if runInfo.NodeFeature, found = annotations[short]; !found || len(runInfo.NodeFeature) == 0 {
-		return errs.New("ConfigMap has no " + short + " annotation cannot determine the device")
-	}
-	short = "specialresource.openshift.io/hardware"
-	if runInfo.HardwareResource, found = annotations[short]; !found || len(runInfo.HardwareResource) == 0 {
-		return errs.New("ConfigMap has no " + short + " annotation cannot determine the vendor-specialresource")
-	}
+	log.Info("Found Hardware Configuration States", "Name", config.GetName())
 
 	node.list, err = cacheNodes(r, false)
 	exitOnError(errs.Wrap(err, "Failed to cache Nodes"))
@@ -179,7 +168,7 @@ func ReconcileHardwareConfigurations(r *ReconcileSpecialResource) error {
 	return nil
 }
 
-func templateSpecialResourceInformation(yamlSpec *[]byte) error {
+func templateRuntimeInformation(yamlSpec *[]byte, r runtimeInformation) error {
 
 	spec := string(*yamlSpec)
 
@@ -188,8 +177,10 @@ func templateSpecialResourceInformation(yamlSpec *[]byte) error {
 	if err := t.Execute(&buff, runInfo); err != nil {
 		return errs.Wrap(err, "Cannot templatize spec for resource info injection, check manifest")
 	}
-
 	*yamlSpec = buff.Bytes()
+
+	log.Info("DEBUG", "LOG", runInfo.SpecialResource.Spec.DriverContainer.Source.Git.Ref)
+	log.Info("DEBUG", "LOG", runInfo.SpecialResource.Spec.DriverContainer.Source.Git.Uri)
 
 	return nil
 }
@@ -203,8 +194,8 @@ func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 
 		yamlSpec := scanner.Bytes()
 
-		err := templateSpecialResourceInformation(&yamlSpec)
-		exitOnError(errs.Wrap(err, "Cannot inject special resource information"))
+		err := templateRuntimeInformation(&yamlSpec, runInfo)
+		exitOnError(errs.Wrap(err, "Cannot inject runtime information"))
 
 		obj := &unstructured.Unstructured{}
 		jsonSpec, err := yaml.YAMLToJSON(yamlSpec)
@@ -214,6 +205,8 @@ func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 		err = obj.UnmarshalJSON(jsonSpec)
 		exitOnError(errs.Wrap(err, "Cannot unmarshall json spec, check your manifests"))
 
+		obj.SetNamespace(namespace)
+
 		// We are only building a driver-container if we cannot pull the image
 		// We are asuming that vendors provide pre compiled DriverContainers
 		// If err == nil, build a new container, if err != nil skip it
@@ -221,8 +214,6 @@ func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 			log.Info("Skipping building driver-container", "Name", obj.GetName())
 			return nil
 		}
-
-		obj.SetNamespace(namespace)
 
 		// Callbacks before CRUD will update the manifests
 		if err := beforeCRUDhooks(obj, r); err != nil {
@@ -291,7 +282,7 @@ func CRUD(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 	logger := log.WithValues("Kind", obj.GetKind(), "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 	found := obj.DeepCopy()
 
-	if err := controllerutil.SetControllerReference(r.specialresource, obj, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&r.specialresource, obj, r.scheme); err != nil {
 		return errs.Wrap(err, "Failed to set controller reference")
 	}
 
@@ -351,7 +342,7 @@ func rebuildDriverContainer(obj *unstructured.Unstructured, r *ReconcileSpecialR
 			logger.Info("vendor != updateVendor", "vendor", vendor, "updateVendor", runInfo.UpdateVendor)
 			return errs.New("vendor != updateVendor")
 		}
-		logger.Info("No label driver-container-vendor found")
+		logger.Info("No annotation driver-container-vendor found")
 		return errs.New("No driver-container-vendor found, nor vendor == updateVendor")
 	}
 
