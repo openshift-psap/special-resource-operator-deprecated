@@ -179,9 +179,6 @@ func templateRuntimeInformation(yamlSpec *[]byte, r runtimeInformation) error {
 	}
 	*yamlSpec = buff.Bytes()
 
-	log.Info("DEBUG", "LOG", runInfo.SpecialResource.Spec.DriverContainer.Source.Git.Ref)
-	log.Info("DEBUG", "LOG", runInfo.SpecialResource.Spec.DriverContainer.Source.Git.Uri)
-
 	return nil
 }
 

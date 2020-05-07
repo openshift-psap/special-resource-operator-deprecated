@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	errs "github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -101,8 +102,15 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 	for _, pod := range pods.Items {
 		log.Info("checkForImagePullBackOff", "PodName", pod.GetName())
 
-		containerStatuses, found, err := unstructured.NestedSlice(pod.Object, "status", "containerStatuses")
-		checkNestedFields(found, err)
+		var err error
+		var found bool
+		var containerStatuses []interface{}
+
+		if containerStatuses, found, err = unstructured.NestedSlice(pod.Object, "status", "containerStatuses"); !found || err != nil {
+			phase, found, err := unstructured.NestedString(pod.Object, "status", "phase")
+			checkNestedFields(found, err)
+			return errs.New("Pod is in phase: " + phase)
+		}
 
 		for _, containerStatus := range containerStatuses {
 			switch containerStatus := containerStatus.(type) {
