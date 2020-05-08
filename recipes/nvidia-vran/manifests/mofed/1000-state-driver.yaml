@@ -171,7 +171,12 @@ spec:
             mountPath: /bin/entrypoint.sh
             readOnly: true
             subPath: entrypoint.sh
+          - name: devices
+            mountPath: /dev
       volumes:
+        - name: devices
+          hostPath: 
+          path: /dev
         - name: run-{{.SpecialResource.Name}}
           hostPath:
             path: /run/mofed
