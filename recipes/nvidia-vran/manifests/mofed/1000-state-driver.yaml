@@ -153,7 +153,7 @@ spec:
         effect: NoSchedule
       serviceAccount: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
       serviceAccountName: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
-      hostPID: true
+      hostNetwork: true
       containers:
       - image: image-registry.openshift-image-registry.svc:5000/{{.SpecialResource.Namespace}}/{{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}:v{{.KernelVersion}}
         imagePullPolicy: Always
@@ -173,7 +173,12 @@ spec:
             subPath: entrypoint.sh
           - name: devices
             mountPath: /dev
+          - name: sysfs
+            mountPath: /sys
       volumes:
+        - name: sysfs
+          hostPath:
+            path: /sys
         - name: devices
           hostPath: 
             path: /dev
