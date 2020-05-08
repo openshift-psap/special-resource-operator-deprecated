@@ -176,7 +176,7 @@ spec:
       volumes:
         - name: devices
           hostPath: 
-          path: /dev
+            path: /dev
         - name: run-{{.SpecialResource.Name}}
           hostPath:
             path: /run/mofed
