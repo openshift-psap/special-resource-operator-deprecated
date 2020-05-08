@@ -54,16 +54,16 @@ data:
       fi
     }
 
-#    modprobe -r rpcrdma ib_srpt ib_isert rdma_cm
-#    modprobe -r i40iw ib_core
-#    /etc/init.d/openibd stop
-#    modprobe tls
-#    modprobe ib_core
-#    modprobe mlx5_core
-#    modprobe mlx5_ib
-#   ibv_devinfo
-#    mst start
-#    mst status -v
+    #    modprobe -r rpcrdma ib_srpt ib_isert rdma_cm
+    #    modprobe -r i40iw ib_core
+    #    /etc/init.d/openibd stop
+    #    modprobe tls
+    #    modprobe ib_core
+    #    modprobe mlx5_core
+    #    modprobe mlx5_ib
+    #   ibv_devinfo
+    #    mst start
+    #    mst status -v
 
     mount_rootfs
 
