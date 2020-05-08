@@ -183,7 +183,12 @@ spec:
             subPath: entrypoint.sh
           - name: "pvol"
             mountPath: "/root/pvol"
+          - name: devices
+            mountPath: /dev
       volumes:
+        - name: devices
+          hostPath: 
+            path: /dev
         - name: run-{{.SpecialResource.Name}}-mofed
           hostPath:
             path: /run/mofed
