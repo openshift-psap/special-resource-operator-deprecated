@@ -16,6 +16,7 @@ import (
 	imageV1 "github.com/openshift/api/image/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	secv1 "github.com/openshift/api/security/v1"
+	configv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -33,9 +34,11 @@ type nodes struct {
 }
 
 var (
-	manifests  = "/etc/kubernetes/special-resource/nvidia-gpu"
-	kubeclient *kubernetes.Clientset
-	node       = nodes{
+	manifests    = "/etc/kubernetes/special-resource/nvidia-gpu"
+	kubeclient   *kubernetes.Clientset
+	configclient *configv1.ConfigV1Client
+
+	node = nodes{
 		list:  &unstructured.UnstructuredList{},
 		count: 0xDEADBEEF,
 	}

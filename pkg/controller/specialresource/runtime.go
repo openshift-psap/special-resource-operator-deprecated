@@ -6,6 +6,7 @@ import (
 
 	srov1alpha1 "github.com/openshift-psap/special-resource-operator/pkg/apis/sro/v1alpha1"
 	errs "github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type resourceGroupName struct {
@@ -165,5 +166,19 @@ func getKernelVersion() (string, error) {
 }
 
 func getClusterVersion() (string, error) {
-	return "", nil
+
+	version, err := configclient.ClusterVersions().Get("version", metav1.GetOptions{})
+	if err != nil {
+		return "", errs.Wrap(err, "ConfigClient unable to get ClusterVersions")
+	}
+
+	for _, condition := range version.Status.History {
+		if condition.State != "Completed" {
+			continue
+		}
+
+		return condition.Version, nil
+	}
+
+	return "", errs.New("Undefined Cluster Version")
 }
