@@ -109,7 +109,8 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 		if containerStatuses, found, err = unstructured.NestedSlice(pod.Object, "status", "containerStatuses"); !found || err != nil {
 			phase, found, err := unstructured.NestedString(pod.Object, "status", "phase")
 			checkNestedFields(found, err)
-			return errs.New("Pod is in phase: " + phase)
+			log.Info("Pod is in phase: " + phase)
+			continue
 		}
 
 		for _, containerStatus := range containerStatuses {
@@ -127,7 +128,7 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 			annotations := obj.GetAnnotations()
 			if vendor, ok := annotations["specialresource.openshift.io/driver-container-vendor"]; ok {
 				runInfo.UpdateVendor = vendor
-				return fmt.Errorf("ImagePullBackOff need to rebuild %s driver-container", runInfo.UpdateVendor)
+				return errs.New("ImagePullBackOff need to rebuild" + runInfo.UpdateVendor + "driver-container")
 			}
 		}
 
@@ -136,5 +137,5 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 		return nil
 	}
 
-	return nil
+	return errs.New("Unexpected Phase of Pods in DameonSet: " + obj.GetName())
 }
