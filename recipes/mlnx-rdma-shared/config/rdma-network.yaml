@@ -1,0 +1,13 @@
+spec:
+  additionalNetworks: 
+  - name: rdma-over-ethernet
+    namespace: nvidia-vran
+    type: SimpleMacvlan
+    simpleMacvlanConfig:
+      master: enp75s0
+      mtu: 9000
+      ipamConfig:
+        type: static
+        staticIPAMConfig:
+          addresses:
+          - address: 10.1.1.0/24

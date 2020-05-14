@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rdma-devices
+data:
+  config.json: |
+    {
+        "configList": [{
+             "resourceName": "hca_shared_devices_a",
+             "rdmaHcaMax": 1000,
+             "devices": ["enp75s0"]
+           }]
+    }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{.SpecialResource.Name}} 
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{.SpecialResource.Name}} 
+rules:
+- apiGroups:
+  - security.openshift.io
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
+  resourceNames:
+  - privileged
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{.SpecialResource.Name}} 
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{.SpecialResource.Name}}
+subjects:
+- kind: ServiceAccount
+  name: {{.SpecialResource.Name}}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{.SpecialResource.Name}}-dp-ds
+spec:
+  selector:
+    matchLabels:
+      name: {{.SpecialResource.Name}}-dp-ds
+  template:
+    metadata:
+      # Mark this pod as a critical add-on; when enabled, the critical add-on scheduler
+      # reserves resources for critical add-on pods so that they can be rescheduled after
+      # a failure.  This annotation works in tandem with the toleration below.
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+      labels:
+        name: {{.SpecialResource.Name}}-dp-ds
+    spec:
+      serviceAccount: {{.SpecialResource.Name}}
+      hostNetwork: true
+      tolerations:
+      # Allow this pod to be rescheduled while the node is in "critical add-ons only" mode.
+      # This, along with the annotation above marks this pod as a critical add-on.
+      - key: CriticalAddonsOnly
+        operator: Exists
+      containers:
+      - image: quay.io/openshift-psap/k8s-rdma-shared-dev-plugin 
+        name: k8s-rdma-shared-dp-ds
+#        command: ["/bin/sh", "-c", "sleep infinity"]
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - name: device-plugin
+            mountPath: /var/lib/kubelet/
+          - name: config
+            mountPath: /k8s-rdma-shared-dev-plugin
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/
+        - name: config
+          configMap:
+            name: rdma-devices
+            items:
+            - key: config.json
+              path: config.json
