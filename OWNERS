@@ -8,3 +8,5 @@ reviewers:
   - Deepthidharwar
   - ArangoGutierrez
   - dagrayvid
+  - kpouget
+component: "Special Resource Operator"
