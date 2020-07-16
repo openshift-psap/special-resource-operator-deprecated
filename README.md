@@ -1,3 +1,11 @@
+# Installation
+
+```
+$ git clone https://github.com/openshift-psap/special-resource-operator
+$ cd special-resource-operator
+$ PULLPOLICY=Always make deploy
+```
+
 # Special Resource Operator (SRO)
 
 The special resource operator is an orchestrator for resources in a cluster specifically designed for resources that need extra management. This reference implementation shows how GPUs can be deployed on a Kubernetes/OpenShift cluster. 
@@ -27,10 +35,6 @@ Labels:             beta.kubernetes.io/arch=amd64
 The special resource operator implements a simple state machine, where each state has a validation step. The validation step for each state is different and relies on the functionality to be tested of the previous state. 
 
 The following descriptions of the states will describe how e.g. the SRO handles GPUs in a cluster. 
-
-### Namespace Separation
-The operator will run in its own namespace (`openshift-sro-operator`) and the operands that the operator orchestrates in another (`openshift-sro`). The operator will watch the operands namespace for changes and act up on accordingly. 
-
 
 ### General State Breakdown
 Assets like ServiceAccount, RBAC, DaemonSet, ConfigMap yaml files for each state are saved in the container under `/opt/sro/state-{driver,device-plugin,monitoring}`. The SRO will take each of these assets and assign a control function to each of them. Those control functions have hooks for preprocessing the yaml files or hooks to preprocess the decoded API runtime objects. Those hooks are used to add runtime information from the cluster like kernel-version, and nodeSelectors based on the discovered hardware etc. 
@@ -73,6 +77,30 @@ One will use the same GPU workload as before for validation but this time the Po
 #### State Monitoring
 This state uses a custom metrics exporter DaemonSet to export metrics for Prometheus. A ServiceMonitor adds this exporter as a new scrape target. 
 
+#### State Feature Discovery
+After deploying the enablement stack, which includes the driver, one can now extract or detect special features about the underlying special resource and use a side-car container for NFD to publish those features with an own prefix (namespace). In the case of the GPU, SRO will use: https://github.com/NVIDIA/gpu-feature-discovery to publish those features. Here is a sample output when describing a Node: 
+
+```
+ nvidia.com/cuda.driver.major=430
+ nvidia.com/cuda.driver.minor=34
+ nvidia.com/cuda.driver.rev=
+ nvidia.com/cuda.runtime.major=10
+ nvidia.com/cuda.runtime.minor=1
+ nvidia.com/gfd.timestamp=1566846697
+ nvidia.com/gpu.compute.major=7
+ nvidia.com/gpu.compute.minor=0
+ nvidia.com/gpu.family=undefined
+ nvidia.com/gpu.machine=HVM-domU
+ nvidia.com/gpu.memory=16160
+ nvidia.com/gpu.product=Tesla-V100-SXM2-16GB
+```
+
+Those labels can be used for advanced scheduling decisions. If workloads need specific compute capabilities they can be deployed to the right node with the fitting GPU.
+
+
+#### State Grafana
+The last steps involves deploying a mutable Grafana instance with a preinstalled GPU dashboard. 
+`oc get route -n openshift-sro` will show the URL for the Grafana instance. 
 
 ## Hard and Soft Partitioning
 The operator has example CR's how to create a hard or soft partitioning scheme for the worker nodes where one has special resources. Hard partitioning is realized with taints and tolerations where soft partitioning is priority and preemption. 

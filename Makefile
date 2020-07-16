@@ -20,45 +20,52 @@ GO_BUILD_RECIPE = GO111MODULE=$(GO111MODULE) GOOS=$(GOOS) go build -mod=vendor -
 
 TEST_RESOURCES  = $(shell mktemp -d)/test-init.yaml
 
-
 BIN=$(lastword $(subst /, ,$(PACKAGE)))
 
 GOFMT_CHECK=$(shell find . -not \( \( -wholename './.*' -o -wholename '*/vendor/*' \) -prune \) -name '*.go' | sort -u | xargs gofmt -s -l)
 
-
 all: build
-
 
 build:
 	$(GO_BUILD_RECIPE)
 
+test: verify
+	go test ./cmd/... ./pkg/... -coverprofile cover.out
+
 test-e2e: 
-	@${TEMPLATE_CMD} manifests/service_account.yaml > $(TEST_RESOURCES)
+	@$(TEMPLATE_CMD) manifests/service_account.yaml > $(TEST_RESOURCES)
 	echo -e "\n---\n" >> $(TEST_RESOURCES)
-	@${TEMPLATE_CMD} manifests/role.yaml >> $(TEST_RESOURCES)
+	@$(TEMPLATE_CMD) manifests/role.yaml >> $(TEST_RESOURCES)
 	echo -e "\n---\n" >> $(TEST_RESOURCES)
-	@${TEMPLATE_CMD} manifests/role_binding.yaml >> $(TEST_RESOURCES)
+	@$(TEMPLATE_CMD) manifests/role_binding.yaml >> $(TEST_RESOURCES)
 	echo -e "\n---\n" >> $(TEST_RESOURCES)
-	@${TEMPLATE_CMD} manifests/operator.yaml >> $(TEST_RESOURCES)
+	@$(TEMPLATE_CMD) manifests/operator.yaml >> $(TEST_RESOURCES)
 
 	go test -v ./test/e2e/... -root $(PWD) -kubeconfig=$(KUBECONFIG) -tags e2e  -globalMan $(DEPLOY_CRD) -namespacedMan $(TEST_RESOURCES)
 
 $(DEPLOY_CRD):
-	@${TEMPLATE_CMD} deploy/$@ | kubectl apply -f -
+	@$(TEMPLATE_CMD) deploy/$@ | kubectl apply -f -
 
 deploy-crd: $(DEPLOY_CRD) 
 	@sleep 1 
+
+$(DEPLOY_NAMESPACE): deploy-crd 
+	@$(TEMPLATE_CMD) deploy/$@ | kubectl apply -f -
+
 
 deploy-objects: deploy-crd
 	@for obj in $(DEPLOY_OBJECTS) $(DEPLOY_CR); do               \
 		$(TEMPLATE_CMD) deploy/$$obj | kubectl apply -f - ; \
 	done 
 
-deploy: deploy-objects
-	@${TEMPLATE_CMD} deploy/$(DEPLOY_CR) | kubectl apply -f -
+
+deploy: $(DEPLOY_NAMESPACE) $(SPECIALRESOURCE) deploy-objects
+	@$(TEMPLATE_CMD) deploy/$(DEPLOY_CR) | kubectl apply -f -
+
+include recipes/$(SPECIALRESOURCE)/config/Makefile
 
 undeploy:
-	@for obj in $(DEPLOY_CRD) $(DEPLOY_CR) $(DEPLOY_OBJECTS); do  \
+	@for obj in $(DEPLOY_CRD) $(DEPLOY_CR) $(DEPLOY_OBJECTS) $(DEPLOY_NAMESPACE); do  \
 		$(TEMPLATE_CMD) deploy/$$obj | kubectl delete -f - ; \
 	done	
 
@@ -81,12 +88,10 @@ clean:
 	rm -f $(BIN)
 
 local-image:
+	@rm -f special-resource-operator
 	podman build --no-cache -t $(IMAGE) -f $(DOCKERFILE) .
-test:
-	go test ./cmd/... ./pkg/... -coverprofile cover.out
 
 local-image-push:
 	podman push $(IMAGE) 
 
-.PHONY: all build generate verify verify-gofmt clean local-image local-image-push $(DEPLOY_CRDS) grafana
-
+.PHONY: all build generate verify verify-gofmt clean test test-e2e local-image local-image-push $(DEPLOY_CRDS) grafana
