@@ -82,9 +82,6 @@ func getRuntimeInformation(r *ReconcileSpecialResource) {
 	runInfo.ClusterVersion, err = getClusterVersion()
 	exitOnError(errs.Wrap(err, "Failed to get cluster version"))
 
-	log.Info("DEBUG", "LOG", r.specialresource.Spec.DriverContainer.Source.Git.Ref)
-	log.Info("DEBUG", "LOG", r.specialresource.Spec.DriverContainer.Source.Git.Uri)
-
 	r.specialresource.DeepCopyInto(&runInfo.SpecialResource)
 }
 
@@ -103,6 +100,9 @@ func getOperatingSystem() (string, string, error) {
 		nodeOSrel = labels[os+".ID"]
 		nodeOSmaj = labels[os+".VERSION_ID.major"]
 		nodeOSmin = labels[os+".VERSION_ID.minor"]
+
+		log.Info("DEBUG", "LOG", labels[os+".ID"])
+		log.Info("DEBUG", "LOG", labels[os+".VERSION_ID.major"])
 
 		if len(nodeOSrel) == 0 || len(nodeOSmaj) == 0 {
 			return "", "", errs.New("Cannot extract " + os + ".*, is NFD running? Check node labels")
