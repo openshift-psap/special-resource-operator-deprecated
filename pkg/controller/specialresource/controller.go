@@ -181,7 +181,7 @@ func (r *ReconcileSpecialResource) Reconcile(request reconcile.Request) (reconci
 
 	for _, specialresource := range specialresources.Items {
 
-		log.Info("Reconciling", "SpecialResurce", specialresource.Name)
+		log.Info("Reconciling", "SpecialResource", specialresource.Name)
 		log.Info("SpecialResurce", "DependsOn", specialresource.Spec.DependsOn.Name)
 
 		// Only one level dependency support for now
