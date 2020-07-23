@@ -1,4 +1,6 @@
 SPECIALRESOURCE  ?= nvidia-gpu
+OPERATOR_SDK     ?= operator-sdk-v0.12.0-x86_64-linux-gnu
+
 
 REGISTRY         ?= quay.io
 ORG              ?= openshift-psap
@@ -60,6 +62,11 @@ deploy-objects: deploy-crd
 	done 
 
 include recipes/$(SPECIALRESOURCE)/config/Makefile
+
+update-api:
+	$(OPERATOR_SDK) generate k8s
+	$(OPERATOR_SDK) generate openapi
+
 
 deploy: $(DEPLOY_NAMESPACE) deploy-objects $(SPECIALRESOURCE) 
 
