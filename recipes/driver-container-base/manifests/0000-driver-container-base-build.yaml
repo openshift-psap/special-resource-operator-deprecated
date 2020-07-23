@@ -43,7 +43,9 @@ data:
     UNAME=$(uname -r)
     
     # Enable EUS and try to install kernel-devel and kernel-headers
-    dnf -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever=8.2 install kernel-devel-${UNAME} kernel-headers-${UNAME} kernel-core-${UNAME}
+    dnf -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever=8.2 \
+      --setopt=install_weak_deps=False --best install \
+      kernel-devel-${UNAME} kernel-headers-${UNAME} kernel-core-${UNAME}
     
     # If EUS fails get kernel-devel and kernel-headers from machine-os-content
     if [ $? -eq 0 ]; then
@@ -58,10 +60,13 @@ data:
       echo "KERNEL HEADERS: $KERNEL_HEADERS"
       echo "KERNEL CORE: $KERNEL_CORE"
 
-      dnf -y install $KERNEL_DEVEL
-      dnf -y install $KERNEL_HEADERS
-      dnf -y install $KERNEL_CORE
+      dnf -y --setopt=install_weak_deps=False --best install $KERNEL_DEVEL
+      dnf -y --setopt=install_weak_deps=False --best install $KERNEL_HEADERS
+      dnf -y --setopt=install_weak_deps=False --best install $KERNEL_CORE
     fi
+
+    # Additional packages that are mandatory for driver-containers
+    dnf -y --setopt=install_weak_deps=False --best install elfutils-libelf-devel kmod
 ---
 apiVersion: v1
 kind: ConfigMap
