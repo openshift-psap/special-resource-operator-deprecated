@@ -15,10 +15,12 @@ data:
     #!/bin/bash -x 
 
     CNT=
+    MNT=
 
     FROM() { export CNT=$(buildah --storage-driver vfs from $1); }
-    
-    #CNT=$(buildah --storage-driver vfs from registry.access.redhat.com/ubi8/ubi)
+
+    MOUNT() { export MNT=$(buildah --storage-driver vfs mount $CNT); }
+    UMOUNT() { buildah --storage-driver vfs umount $CNT; }
 
     ENV() { buildah config --env $@; }
     RUN() { buildah --storage-driver vfs --isolation chroot run --user 0 $CNT -- $@; }
@@ -56,9 +58,9 @@ data:
       echo "KERNEL HEADERS: $KERNEL_HEADERS"
       echo "KERNEL CORE: $KERNEL_CORE"
 
-      #       dnf -y install $KERNEL_DEVEL
-      #       dnf -y install $KERNEL_HEADERS
-      #       dnf -y install $KERNEL_CORE
+      dnf -y install $KERNEL_DEVEL
+      dnf -y install $KERNEL_HEADERS
+      dnf -y install $KERNEL_CORE
     fi
 ---
 apiVersion: v1
@@ -69,27 +71,32 @@ data:
   entrypoint.sh: |-
     #!/bin/bash -x 
     set -e
-    cd /root
+    cd /tmp
 
-    dnf -y install buildah git 
+    dnf -y install buildah git make 
+
+    git clone {{.SpecialResource.Spec.DriverContainer.Source.Git.Uri}}
 
     source /bin/buildah-helper.sh
 
     UNAME=$(uname -r)
     SCRIPT_NAME=install-depedencies.sh
- 
     TAG={{.SpecialResource.Namespace}}/{{.SpecialResource.Name}}:v${UNAME}
 
     # Container instructions start ------------------------------------
  
     FROM registry.access.redhat.com/ubi8/ubi
 
-    WORKINGDIR /root
+    WORKINGDIR /tmp
  
     COPY /bin/${SCRIPT_NAME} .
-    #RUN chmod +x ${SCRIPT_NAME}
-    #RUNV bash -c $(pwd)/${SCRIPT_NAME}
+    RUNV bash -c $(pwd)/${SCRIPT_NAME}
  
+    MOUNT
+    cd kmods-via-containers
+    make install ESTDIR=${MNT}/usr/local CONFDIR=${MNT}/etc/
+    UMOUNT
+
     COMMIT ${TAG}
     PUSH   ${TAG} image-registry.openshift-image-registry.svc:5000/${TAG}
 
@@ -131,7 +138,7 @@ spec:
   volumes:
     - name: dockercfg
       secret:
-        secretName: builder-dockercfg-lwwxb
+        secretName: {{.PushSecretName}}
     - name: overlay
       hostPath:
       path: /var/lib/containers/storage/overlay
