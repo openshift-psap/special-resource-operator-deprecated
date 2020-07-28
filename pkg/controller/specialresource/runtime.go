@@ -42,7 +42,7 @@ type runtimeInformation struct {
 	KernelVersion             string
 	ClusterVersion            string
 	UpdateVendor              string
-	PushSecretName            string
+  PushSecretName            string
 
 	GroupName       resourceGroupName
 	StateName       resourceStateName
@@ -231,5 +231,4 @@ func getPushSecretName(r *ReconcileSpecialResource) (string, error) {
 	}
 
 	return "", errors.Wrap(err, "Cannot find Secret builder-dockercfg")
-
 }
