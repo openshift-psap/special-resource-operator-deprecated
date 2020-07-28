@@ -15,7 +15,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"./pkg/apis/sro/v1alpha1.SpecialResourceArtifacts":       schema_pkg_apis_sro_v1alpha1_SpecialResourceArtifacts(ref),
 		"./pkg/apis/sro/v1alpha1.SpecialResourceBuilArgs":        schema_pkg_apis_sro_v1alpha1_SpecialResourceBuilArgs(ref),
 		"./pkg/apis/sro/v1alpha1.SpecialResourceClaims":          schema_pkg_apis_sro_v1alpha1_SpecialResourceClaims(ref),
-		"./pkg/apis/sro/v1alpha1.SpecialResourceDependsOn":       schema_pkg_apis_sro_v1alpha1_SpecialResourceDependsOn(ref),
+		"./pkg/apis/sro/v1alpha1.SpecialResourceDependency":      schema_pkg_apis_sro_v1alpha1_SpecialResourceDependency(ref),
 		"./pkg/apis/sro/v1alpha1.SpecialResourceDriverContainer": schema_pkg_apis_sro_v1alpha1_SpecialResourceDriverContainer(ref),
 		"./pkg/apis/sro/v1alpha1.SpecialResourceGit":             schema_pkg_apis_sro_v1alpha1_SpecialResourceGit(ref),
 		"./pkg/apis/sro/v1alpha1.SpecialResourceImages":          schema_pkg_apis_sro_v1alpha1_SpecialResourceImages(ref),
@@ -175,28 +175,27 @@ func schema_pkg_apis_sro_v1alpha1_SpecialResourceClaims(ref common.ReferenceCall
 	}
 }
 
-func schema_pkg_apis_sro_v1alpha1_SpecialResourceDependsOn(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_sro_v1alpha1_SpecialResourceDependency(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "SpecialResourceDependsOn defines the desired state of SpecialResource",
+				Description: "SpecialResourceDependency is a SpecialResource that needs to be Complete",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "",
-									},
-								},
-							},
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
 						},
 					},
 				},
-				Required: []string{"name"},
+				Required: []string{"name", "namespace"},
 			},
 		},
 	}
@@ -442,14 +441,21 @@ func schema_pkg_apis_sro_v1alpha1_SpecialResourceSpec(ref common.ReferenceCallba
 					},
 					"dependsOn": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/sro/v1alpha1.SpecialResourceDependsOn"),
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("./pkg/apis/sro/v1alpha1.SpecialResourceDependency"),
+									},
+								},
+							},
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/sro/v1alpha1.SpecialResourceDependsOn", "./pkg/apis/sro/v1alpha1.SpecialResourceDriverContainer", "./pkg/apis/sro/v1alpha1.SpecialResourceNode"},
+			"./pkg/apis/sro/v1alpha1.SpecialResourceDependency", "./pkg/apis/sro/v1alpha1.SpecialResourceDriverContainer", "./pkg/apis/sro/v1alpha1.SpecialResourceNode"},
 	}
 }
 

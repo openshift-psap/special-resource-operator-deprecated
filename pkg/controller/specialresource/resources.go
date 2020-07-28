@@ -202,8 +202,15 @@ func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 
 		yamlSpec := scanner.Bytes()
 
-		err := templateRuntimeInformation(&yamlSpec, runInfo)
-		exitOnError(errs.Wrap(err, "Cannot inject runtime information"))
+		// We can pass template information from the CR to the yamls
+		// thats why we are running 2 passes.
+		if err := templateRuntimeInformation(&yamlSpec, runInfo); err != nil {
+			return errs.Wrap(err, "Cannot inject runtime information 1st pass")
+		}
+
+		if err := templateRuntimeInformation(&yamlSpec, runInfo); err != nil {
+			return errs.Wrap(err, "Cannot inject runtime information 2nd pass")
+		}
 
 		obj := &unstructured.Unstructured{}
 		jsonSpec, err := yaml.YAMLToJSON(yamlSpec)

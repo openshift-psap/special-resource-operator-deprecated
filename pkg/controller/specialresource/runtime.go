@@ -218,12 +218,8 @@ func getPushSecretName(r *ReconcileSpecialResource) (string, error) {
 		return "", errors.Wrap(err, "Client cannot get SecretList")
 	}
 
-	log.Info("DEBUG", "SECRET LEN", len(secrets.Items))
-
 	for _, secret := range secrets.Items {
 		secretName := secret.GetName()
-
-		log.Info("DEBUG", "SECRET", secretName)
 
 		if strings.Contains(secretName, "builder-dockercfg") {
 			return secretName, nil

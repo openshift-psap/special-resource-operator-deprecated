@@ -32,15 +32,19 @@ spec:
           description: SpecialResourceSpec defines the desired state of SpecialResource
           properties:
             dependsOn:
-              description: SpecialResourceDependsOn defines the desired state of SpecialResource
-              properties:
-                name:
-                  items:
+              items:
+                description: SpecialResourceDependency is a SpecialResource that needs
+                  to be Complete
+                properties:
+                  name:
                     type: string
-                  type: array
-              required:
-              - name
-              type: object
+                  namespace:
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
+              type: array
             driverContainer:
               description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
                 Important: Run "operator-sdk generate k8s" to regenerate code after

@@ -85,10 +85,11 @@ type SpecialResourceDriverContainer struct {
 	Artifacts SpecialResourceArtifacts  `json:"artifacts,omitempty"`
 }
 
-// SpecialResourceDependsOn defines the desired state of SpecialResource
+// SpecialResourceDependency is a SpecialResource that needs to be Complete
 // +k8s:openapi-gen=true
-type SpecialResourceDependsOn struct {
-	Name []string `json:"name"`
+type SpecialResourceDependency struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
 }
 
 // SpecialResourceSpec defines the desired state of SpecialResource
@@ -99,7 +100,7 @@ type SpecialResourceSpec struct {
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	DriverContainer SpecialResourceDriverContainer `json:"driverContainer,omitempty"`
 	Node            SpecialResourceNode            `json:"node,omitempty"`
-	DependsOn       SpecialResourceDependsOn       `json:"dependsOn,omitempty"`
+	DependsOn       []SpecialResourceDependency    `json:"dependsOn,omitempty"`
 }
 
 // SpecialResourceStatus defines the observed state of SpecialResource
