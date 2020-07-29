@@ -41,9 +41,12 @@ data:
     #!/bin/bash
     
     UNAME=$(uname -r)
-    
+
+    # First update the base container to latest versions of everything
+    dnf update -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever={{.OperatingSystemMajorMinor}}
+
     # Enable EUS and try to install kernel-devel and kernel-headers
-    dnf -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever=8.2 \
+    dnf -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever={{.OperatingSystemMajorMinor}} \
       --setopt=install_weak_deps=False --best install \
       kernel-devel-${UNAME} kernel-headers-${UNAME} kernel-core-${UNAME}
     
@@ -99,7 +102,7 @@ data:
  
     MOUNT
     cd kmods-via-containers
-    make install ESTDIR=${MNT}/usr/local CONFDIR=${MNT}/etc/
+    make install DESTDIR=${MNT}/usr/local CONFDIR=${MNT}/etc/
     UMOUNT
 
     COMMIT ${TAG}
