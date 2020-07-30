@@ -95,7 +95,7 @@ func getRuntimeInformation(r *ReconcileSpecialResource) {
 	r.specialresource.DeepCopyInto(&runInfo.SpecialResource)
 }
 
-func getOperatingSystem() (string, string, error) {
+func getOperatingSystem() (string, string, string, error) {
 
 	var nodeOSrel string
 	var nodeOSmaj string
@@ -115,7 +115,7 @@ func getOperatingSystem() (string, string, error) {
 		log.Info("DEBUG", "LOG", labels[os+".VERSION_ID.major"])
 
 		if len(nodeOSrel) == 0 || len(nodeOSmaj) == 0 {
-			return "", "", errs.New("Cannot extract " + os + ".*, is NFD running? Check node labels")
+			return "", "", "", errs.New("Cannot extract " + os + ".*, is NFD running? Check node labels")
 		}
 		break
 	}
@@ -152,7 +152,7 @@ func renderOperatingSystem(rel string, maj string, min string) (string, string, 
 		}
 
 		maj := "8"
-		return rel + maj, rel + maj + ".2", maj + ".2" nil
+		return rel + maj, rel + maj + ".2", maj + ".2", nil
 	}
 
 	// A Fedora system has no min yet, so if min is empty
