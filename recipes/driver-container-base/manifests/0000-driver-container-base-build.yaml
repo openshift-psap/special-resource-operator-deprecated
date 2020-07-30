@@ -37,7 +37,7 @@ kind: ConfigMap
 metadata:
   name: {{.SpecialResource.Name}}-install-dependencies
 data:
-  install-depedencies.sh: |-
+  install-dependencies.sh: |-
     #!/bin/bash
     
     UNAME=$(uname -r)
@@ -88,7 +88,7 @@ data:
     source /bin/buildah-helper.sh
 
     UNAME=$(uname -r)
-    SCRIPT_NAME=install-depedencies.sh
+    SCRIPT_NAME=install-dependencies.sh
     TAG={{.SpecialResource.Namespace}}/{{.SpecialResource.Name}}:v${UNAME}
 
     # --------- Container instructions START ----------------------------------
@@ -134,10 +134,10 @@ spec:
           mountPath: /bin/entrypoint.sh
           readOnly: true
           subPath: entrypoint.sh
-        - name: install-depedencies
-          mountPath: /bin/install-depedencies.sh
+        - name: install-dependencies
+          mountPath: /bin/install-dependencies.sh
           readOnly: true
-          subPath: install-depedencies.sh
+          subPath: install-dependencies.sh
         - name: buildah-helper
           mountPath: /bin/buildah-helper.sh
           readOnly: true
@@ -159,7 +159,7 @@ spec:
       configMap:
         defaultMode: 0700
         name: {{.SpecialResource.Name}}-entrypoint
-    - name: install-depedencies
+    - name: install-dependencies
       configMap:
         defaultMode: 0700
         name: {{.SpecialResource.Name}}-install-dependencies

@@ -2,7 +2,7 @@ apiVersion: sro.openshift.io/v1alpha1
 kind: SpecialResource
 metadata:
   name: REPLACE_SPECIALRESOURCE
-  namespace: REPLACE_NAMESPACE
+  namespace: REPLACE_SPECIALRESOURCE
 spec:
   driverContainer:
     source:
