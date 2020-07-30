@@ -39,7 +39,7 @@ type resourceStateName struct {
 type runtimeInformation struct {
 	OperatingSystemMajor      string
 	OperatingSystemMajorMinor string
-	MajorMinor                string
+	OperatingSystemDecimal    string
 	KernelVersion             string
 	ClusterVersion            string
 	UpdateVendor              string
@@ -71,6 +71,7 @@ var runInfo = runtimeInformation{
 func logRuntimeInformation() {
 	log.Info("Runtime Information", "OperatingSystemMajor", runInfo.OperatingSystemMajor)
 	log.Info("Runtime Information", "OperatingSystemMajorMinor", runInfo.OperatingSystemMajorMinor)
+	log.Info("Runtime Information", "OperatingSystemDecimal", runInfo.OperatingSystemDecimal)
 	log.Info("Runtime Information", "KernelVersion", runInfo.KernelVersion)
 	log.Info("Runtime Information", "ClusterVersion", runInfo.ClusterVersion)
 	log.Info("Runtime Information", "UpdateVendor", runInfo.UpdateVendor)
@@ -80,7 +81,7 @@ func logRuntimeInformation() {
 func getRuntimeInformation(r *ReconcileSpecialResource) {
 
 	var err error
-	runInfo.OperatingSystemMajor, runInfo.OperatingSystemMajorMinor, runInfo.MajorMinor, err = getOperatingSystem()
+	runInfo.OperatingSystemMajor, runInfo.OperatingSystemMajorMinor, runInfo.OperatingSystemDecimal, err = getOperatingSystem()
 	exitOnError(errs.Wrap(err, "Failed to get operating system"))
 
 	runInfo.KernelVersion, err = getKernelVersion()
