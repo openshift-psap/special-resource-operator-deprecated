@@ -6,9 +6,10 @@ REGISTRY         ?= quay.io
 ORG              ?= openshift-psap
 TAG              ?= $(shell git branch | grep \* | cut -d ' ' -f2)
 IMAGE            ?= $(REGISTRY)/$(ORG)/special-resource-operator:$(TAG)
-NAMESPACE        ?= $(SPECIALRESOURCE)
+NAMESPACE        ?= openshift-sro
 PULLPOLICY       ?= IfNotPresent
 TEMPLATE_CMD      = sed 's+REPLACE_IMAGE+$(IMAGE)+g; s+REPLACE_NAMESPACE+$(NAMESPACE)+g; s+Always+$(PULLPOLICY)+; s+REPLACE_SPECIALRESOURCE+$(SPECIALRESOURCE)+'
+
 DEPLOY_NAMESPACE  = namespace.yaml
 DEPLOY_OBJECTS    = service_account.yaml role.yaml role_binding.yaml operator.yaml
 DEPLOY_CRD        = crds/sro.openshift.io_specialresources_crd.yaml 
@@ -63,12 +64,13 @@ deploy-objects: deploy-crd
 
 include recipes/$(SPECIALRESOURCE)/config/Makefile
 
+specialresource: $(SPECIALRESOURCE) 
+
 update-api:
 	$(OPERATOR_SDK) generate k8s
 	$(OPERATOR_SDK) generate openapi
 
-
-deploy: $(DEPLOY_NAMESPACE) deploy-objects $(SPECIALRESOURCE) 
+deploy: $(DEPLOY_NAMESPACE) deploy-objects 
 
 undeploy: 
 	@for obj in $(DEPLOY_CRD) $(DEPLOY_OBJECTS) $(DEPLOY_NAMESPACE); do  \

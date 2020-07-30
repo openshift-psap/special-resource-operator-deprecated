@@ -227,5 +227,4 @@ func getPushSecretName(r *ReconcileSpecialResource) (string, error) {
 	}
 
 	return "", errors.Wrap(err, "Cannot find Secret builder-dockercfg")
-
 }
