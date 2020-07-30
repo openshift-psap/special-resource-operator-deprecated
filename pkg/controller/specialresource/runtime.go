@@ -39,6 +39,7 @@ type resourceStateName struct {
 type runtimeInformation struct {
 	OperatingSystemMajor      string
 	OperatingSystemMajorMinor string
+	MajorMinor                string
 	KernelVersion             string
 	ClusterVersion            string
 	UpdateVendor              string
@@ -79,7 +80,7 @@ func logRuntimeInformation() {
 func getRuntimeInformation(r *ReconcileSpecialResource) {
 
 	var err error
-	runInfo.OperatingSystemMajor, runInfo.OperatingSystemMajorMinor, err = getOperatingSystem()
+	runInfo.OperatingSystemMajor, runInfo.OperatingSystemMajorMinor, runInfo.MajorMinor, err = getOperatingSystem()
 	exitOnError(errs.Wrap(err, "Failed to get operating system"))
 
 	runInfo.KernelVersion, err = getKernelVersion()
@@ -122,7 +123,7 @@ func getOperatingSystem() (string, string, error) {
 	return renderOperatingSystem(nodeOSrel, nodeOSmaj, nodeOSmin)
 }
 
-func renderOperatingSystem(rel string, maj string, min string) (string, string, error) {
+func renderOperatingSystem(rel string, maj string, min string) (string, string, string, error) {
 
 	log.Info("OS", "rel", rel)
 	log.Info("OS", "maj", maj)
@@ -137,30 +138,30 @@ func renderOperatingSystem(rel string, maj string, min string) (string, string, 
 
 		if strings.Compare(maj, "4") == 0 && num < 4 {
 			maj := "8"
-			return rel + maj, rel + maj + ".0", nil
+			return rel + maj, rel + maj + ".0", maj + ".0", nil
 		}
 
 		if strings.Compare(maj, "4") == 0 && strings.Compare(min, "4") == 0 {
 			maj := "8"
-			return rel + maj, rel + maj + ".1", nil
+			return rel + maj, rel + maj + ".1", maj + ".1", nil
 		}
 
 		if strings.Compare(maj, "4") == 0 && strings.Compare(min, "5") == 0 {
 			maj := "8"
-			return rel + maj, rel + maj + ".2", nil
+			return rel + maj, rel + maj + ".2", maj + ".2", nil
 		}
 
 		maj := "8"
-		return rel + maj, rel + maj + ".2", nil
+		return rel + maj, rel + maj + ".2", maj + ".2" nil
 	}
 
 	// A Fedora system has no min yet, so if min is empty
 	// return fedora31 and not fedora31.
 	if min == "" {
-		return rel + maj, rel + maj, nil
+		return rel + maj, rel + maj, maj, nil
 	}
 
-	return rel + maj, rel + maj + "." + min, nil
+	return rel + maj, rel + maj + "." + min, maj + "." + min, nil
 
 }
 

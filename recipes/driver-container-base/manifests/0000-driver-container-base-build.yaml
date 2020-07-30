@@ -43,10 +43,10 @@ data:
     UNAME=$(uname -r)
 
     # First update the base container to latest versions of everything
-    yum update -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever={{.OperatingSystemMajorMinor}}
+    yum update -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever={{.MajorMinor}}
 
     # Enable EUS and try to install kernel-devel and kernel-headers
-    yum -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever={{.OperatingSystemMajorMinor}} \
+    yum -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever={{.MajorMinor}} \
       --setopt=install_weak_deps=False --best install \
       kernel-devel-${UNAME} kernel-headers-${UNAME} kernel-core-${UNAME}
     
