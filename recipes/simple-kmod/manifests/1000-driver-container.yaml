@@ -116,8 +116,6 @@ spec:
         app: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
     spec:
       tolerations:
-      - operator: Exists
-      - key: nvidia.com/gpu
         operator: Exists
         effect: NoSchedule
       serviceAccount: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
