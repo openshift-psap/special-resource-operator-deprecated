@@ -18,9 +18,3 @@ spec:
   dependsOn: 
   - name: "driver-container-base"
     namespace: "driver-container-base"
-
-    
-
-
-
-
