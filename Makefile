@@ -22,8 +22,6 @@ GOOS              = linux
 GO111MODULE       = auto
 GO_BUILD_RECIPE   = GO111MODULE=$(GO111MODULE) GOOS=$(GOOS) go build -mod=vendor -o $(BIN) $(MAIN_PACKAGE)
 
-TEST_RESOURCES  = $(shell mktemp -d)/test-init.yaml
-
 BIN=$(lastword $(subst /, ,$(PACKAGE)))
 
 GOFMT_CHECK=$(shell find . -not \( \( -wholename './.*' -o -wholename '*/vendor/*' \) -prune \) -name '*.go' | sort -u | xargs gofmt -s -l)
@@ -37,15 +35,16 @@ test: verify
 	go test ./cmd/... ./pkg/... -coverprofile cover.out
 
 test-e2e: 
-	@$(TEMPLATE_CMD) manifests/service_account.yaml > $(TEST_RESOURCES)
-	echo -e "\n---\n" >> $(TEST_RESOURCES)
-	@$(TEMPLATE_CMD) manifests/role.yaml >> $(TEST_RESOURCES)
-	echo -e "\n---\n" >> $(TEST_RESOURCES)
-	@$(TEMPLATE_CMD) manifests/role_binding.yaml >> $(TEST_RESOURCES)
-	echo -e "\n---\n" >> $(TEST_RESOURCES)
-	@$(TEMPLATE_CMD) manifests/operator.yaml >> $(TEST_RESOURCES)
+	$(eval TMP := $(shell mktemp -d)/test-init.yaml)
+	@$(TEMPLATE_CMD) deploy/service_account.yaml > $(TMP)
+	echo -e "\n---\n" >> $(TMP)
+	@$(TEMPLATE_CMD) deploy/role.yaml >> $(TMP)
+	echo -e "\n---\n" >> $(TMP)
+	@$(TEMPLATE_CMD) deploy/role_binding.yaml >> $(TMP)
+	echo -e "\n---\n" >> $(TMP)
+	@$(TEMPLATE_CMD) deploy/operator.yaml >> $(TMP)
 
-	go test -v ./test/e2e/... -root $(PWD) -kubeconfig=$(KUBECONFIG) -tags e2e  -globalMan $(DEPLOY_CRD) -namespacedMan $(TEST_RESOURCES)
+	go test -v ./test/e2e/... -root $(PWD) -kubeconfig=$(KUBECONFIG) -tags e2e  -globalMan deploy/$(DEPLOY_CRD) -namespacedMan $(TMP)
 
 $(DEPLOY_CRD):
 	@$(TEMPLATE_CMD) deploy/$@ | kubectl apply -f -

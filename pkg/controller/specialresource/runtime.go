@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	//machineV1 "github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1"
 )
 
 type resourceGroupName struct {
@@ -44,6 +45,7 @@ type runtimeInformation struct {
 	ClusterVersion            string
 	UpdateVendor              string
 	PushSecretName            string
+	OSImageURL                string
 
 	GroupName       resourceGroupName
 	StateName       resourceStateName
@@ -76,6 +78,7 @@ func logRuntimeInformation() {
 	log.Info("Runtime Information", "ClusterVersion", runInfo.ClusterVersion)
 	log.Info("Runtime Information", "UpdateVendor", runInfo.UpdateVendor)
 	log.Info("Runtime Information", "PushSecretName", runInfo.PushSecretName)
+	log.Info("Runtime Information", "OSImageURL", runInfo.OSImageURL)
 }
 
 func getRuntimeInformation(r *ReconcileSpecialResource) {
@@ -229,4 +232,9 @@ func getPushSecretName(r *ReconcileSpecialResource) (string, error) {
 	}
 
 	return "", errors.Wrap(err, "Cannot find Secret builder-dockercfg")
+}
+
+func getOSImageURL(r *ReconcileSpecialResource) (string, error) {
+
+	return "", nil
 }

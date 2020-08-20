@@ -16,24 +16,20 @@ package e2e
 
 import (
 	goctx "context"
-	"errors"
-	"fmt"
 	"io/ioutil"
 	"testing"
 	"time"
 
-	"github.com/ghodss/yaml"
 	apis "github.com/openshift-psap/special-resource-operator/pkg/apis"
 	operator "github.com/openshift-psap/special-resource-operator/pkg/apis/sro/v1alpha1"
-	"github.com/openshift-psap/special-resource-operator/pkg/yamlutil"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -64,66 +60,6 @@ var (
 	//opImage = "registry.svc.ci.openshift.org/openshift/node-feature-discovery-container:v4.2"
 )
 
-func createFromYAML(yamlFile []byte, skipIfExists bool, cleanupOptions *CleanupOptions) error {
-	//	namespace, err := ctx.GetNamespace()
-	//	if err != nil {
-	//		return err
-	//	}
-	scanner := yamlutil.NewYAMLScanner(yamlFile)
-	for scanner.Scan() {
-		yamlSpec := scanner.Bytes()
-
-		obj := &unstructured.Unstructured{}
-		jsonSpec, err := yaml.YAMLToJSON(yamlSpec)
-		if err != nil {
-			return fmt.Errorf("could not convert yaml file to json: %v", err)
-		}
-		obj.UnmarshalJSON(jsonSpec)
-		obj.SetNamespace(namespace)
-		err = Global.Client.Create(goctx.TODO(), obj, cleanupOptions)
-		if skipIfExists && apierrors.IsAlreadyExists(err) {
-			continue
-		}
-		if err != nil {
-			_, restErr := restMapper.RESTMappings(obj.GetObjectKind().GroupVersionKind().GroupKind())
-			if restErr == nil {
-				return err
-			}
-			// don't store error, as only error will be timeout. Error from runtime client will be easier for
-			// the user to understand than the timeout error, so just use that if we fail
-			wait.PollImmediate(time.Second*1, time.Second*10, func() (bool, error) {
-				restMapper.Reset()
-				_, err := restMapper.RESTMappings(obj.GetObjectKind().GroupVersionKind().GroupKind())
-				if err != nil {
-					return false, nil
-				}
-				return true, nil
-			})
-			err = Global.Client.Create(goctx.TODO(), obj, cleanupOptions)
-			if skipIfExists && apierrors.IsAlreadyExists(err) {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("failed to scan manifest: (%v)", err)
-	}
-	return nil
-}
-
-func InitializeClusterResources(file string) error {
-	// create namespaced resources
-	namespacedYAML, err := ioutil.ReadFile(file)
-	if err != nil {
-		return fmt.Errorf("failed to read namespaced manifest: %v", err)
-	}
-	return createFromYAML(namespacedYAML, false)
-}
-
 func TestSpecialResourceAddScheme(t *testing.T) {
 	sroList := &operator.SpecialResourceList{}
 
@@ -138,33 +74,27 @@ func TestSpecialResource(t *testing.T) {
 
 	defer ctx.Cleanup()
 
-	err := ctx.InitializeClusterResources("/home/openshift-psap/go/src/github.com/openshift-psap/special-resource-operator/manifests/operator-init.yaml")
+	//err := ctx.InitializeClusterResources("/home/openshift-psap/go/src/github.com/openshift-psap/special-resource-operator/manifests/operator-init.yaml")
+	err := ctx.InitializeClusterResources(&framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
 	if err != nil {
 		t.Fatalf("failed to initialize cluster resources: %v", err)
 	}
 	t.Log("Initialized cluster resources")
-	/*
-		namespace, err := ctx.GetNamespace()
-		if err != nil {
-			t.Fatal(err)
-		}
 
-		err = createClusterRoleBinding(t, namespace, ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
+	namespace, err := ctx.GetNamespace()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-		// get global framework variables
-		f := framework.Global
-		err = e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "nfd-operator", 1, retryInterval, timeout)
-		if err != nil {
-			t.Fatal(err)
-		}
+	f := framework.Global
+	err = e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "special-resource-operator", 1, retryInterval, timeout)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-		if err = nodeFeatureDiscovery(t, f, ctx); err != nil {
-			t.Fatal(err)
-		}
-	*/
+	if err = driverContainerBase(t, f, ctx); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func createClusterRoleBinding(t *testing.T, namespace string, ctx *framework.TestCtx) error {
@@ -197,70 +127,16 @@ func createClusterRoleBinding(t *testing.T, namespace string, ctx *framework.Tes
 	return err
 }
 
-/*
-func nodeFeatureDiscovery(t *testing.T, f *framework.Framework, ctx *framework.TestCtx) error {
-	namespace, err := ctx.GetNamespace()
-	if err != nil {
-		return fmt.Errorf("could not get namespace: %v", err)
-	}
-	// create memcached custom resource
-	nfd := &operator.SpecialResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      opName,
-			Namespace: namespace,
-		},
-		Spec: operator.SpecialResourceSpec{
-			OperandNamespace: opNamespace,
-			OperandImage:     opImage,
-		},
-	}
+func createSpecialResource(t *testing.T, ctx *framework.TestCtx, namespace string, name string) error {
 
-	// use TestCtx's create helper to create the object and add a cleanup function for the new object
-	err = f.Client.Create(goctx.TODO(), nfd, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
-	if err != nil {
-		return err
-	}
-
-	t.Logf("Created CR with OperandNamespace: %s OperandImage %s", opNamespace, opImage)
-
-	err = WaitForDaemonSet(t, f.KubeClient, opNamespace, "nfd-master", 0, retryInterval, timeout)
-	if err != nil {
-		return err
-	}
-
-	err = WaitForDaemonSet(t, f.KubeClient, opNamespace, "nfd-worker", 0, retryInterval, timeout)
-	if err != nil {
-		return err
-	}
-
-	return checkDefaultLabels(t, f.KubeClient)
+	return nil
 }
-*/
-func checkDefaultLabels(t *testing.T, kubeclient kubernetes.Interface) error {
 
-	opts := metav1.ListOptions{}
-	nodeList, err := kubeclient.CoreV1().Nodes().List(opts)
-	if err != nil {
-		t.Error("Could not retrieve List of Nodes")
-		return err
-	}
+func driverContainerBase(t *testing.T, f *framework.Framework, ctx *framework.TestCtx) error {
 
-	for _, node := range nodeList.Items {
-		labels := node.GetLabels()
-		key := "node-role.kubernetes.io/master"
-		// don't care masters
-		if val, ok := labels[key]; ok {
-			t.Logf("Ignoring Master: %s=%s %s", key, val, node.Name)
-			continue
-		}
-		key = "feature.node.kubernetes.io/kernel-version.full"
-		if val, ok := labels[key]; ok {
-			t.Logf("%s=%s: %s", key, val, node.Name)
-		} else {
-			t.Errorf("Node %s Label %s not found", node.Name, key)
-			return errors.New("LabelIsNotFound")
-		}
-	}
+	// Create DriverContainerBase Manifests
+	createSpecialResource(t, ctx, "driver-container-base", "driver-container-base")
+
 	return nil
 }
 
