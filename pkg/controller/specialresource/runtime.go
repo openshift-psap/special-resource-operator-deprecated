@@ -8,9 +8,12 @@ import (
 	srov1alpha1 "github.com/openshift-psap/special-resource-operator/pkg/apis/sro/v1alpha1"
 	"github.com/pkg/errors"
 	errs "github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	//machineV1 "github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1"
 )
 
 type resourceGroupName struct {
@@ -44,6 +47,7 @@ type runtimeInformation struct {
 	ClusterVersion            string
 	UpdateVendor              string
 	PushSecretName            string
+	OSImageURL                string
 
 	GroupName       resourceGroupName
 	StateName       resourceStateName
@@ -76,6 +80,7 @@ func logRuntimeInformation() {
 	log.Info("Runtime Information", "ClusterVersion", runInfo.ClusterVersion)
 	log.Info("Runtime Information", "UpdateVendor", runInfo.UpdateVendor)
 	log.Info("Runtime Information", "PushSecretName", runInfo.PushSecretName)
+	log.Info("Runtime Information", "OSImageURL", runInfo.OSImageURL)
 }
 
 func getRuntimeInformation(r *ReconcileSpecialResource) {
@@ -92,6 +97,9 @@ func getRuntimeInformation(r *ReconcileSpecialResource) {
 
 	runInfo.PushSecretName, err = getPushSecretName(r)
 	exitOnError(errs.Wrap(err, "Failed to get push secret name"))
+
+	runInfo.OSImageURL, err = getOSImageURL(r)
+	exitOnError(errs.Wrap(err, "Failed to get OSImageURL"))
 
 	r.specialresource.DeepCopyInto(&runInfo.SpecialResource)
 }
@@ -229,4 +237,23 @@ func getPushSecretName(r *ReconcileSpecialResource) (string, error) {
 	}
 
 	return "", errors.Wrap(err, "Cannot find Secret builder-dockercfg")
+}
+
+func getOSImageURL(r *ReconcileSpecialResource) (string, error) {
+
+	cm := &unstructured.Unstructured{}
+	cm.SetAPIVersion("v1")
+	cm.SetKind("ConfigMap")
+
+	namespacedName := types.NamespacedName{Namespace: "openshift-machine-config-operator", Name: "machine-config-osimageurl"}
+	err := r.client.Get(context.TODO(), namespacedName, cm)
+	if apierrors.IsNotFound(err) {
+		return "", errs.Wrap(err, "ConfigMap machine-config-osimageurl -n  openshift-machine-config-operator not found")
+	}
+
+	osImageURL, found, err := unstructured.NestedString(cm.Object, "data", "osImageURL")
+	checkNestedFields(found, err)
+
+	return osImageURL, nil
+
 }

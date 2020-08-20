@@ -17,6 +17,10 @@ data:
     CNT=
     MNT=
 
+    MOUNT_MACHINE_OS_CONTENT() { export MOC=$(buildah --authfile /var/lib/kubelet/config.json  --storage-driver vfs from {{.OSImageURL}}); export MOCMNT=$(buildah --storage-driver vfs mount $MOC); }
+    UMOUNT_MACHINE_OS_CONTENT() { buildah --storage-driver vfs umount $MOC;  }
+
+
     FROM() { export CNT=$(buildah --storage-driver vfs from $1); }
 
     MOUNT() { export MNT=$(buildah --storage-driver vfs mount $CNT); }
@@ -24,12 +28,13 @@ data:
 
     ENV() { buildah config --env $@; }
     RUN() { buildah --storage-driver vfs --isolation chroot run --user 0 $CNT -- $@; }
-    RUNV() { buildah --storage-driver vfs --isolation chroot run --volume /etc/pki/entitlement-host:/etc/pki/entitlement:z --volume /tmp/overlay:/tmp/overlay:z --user 0 $CNT -- $@; }
+    RUNV() { buildah --storage-driver vfs --isolation chroot run --volume /etc/pki/entitlement-host:/etc/pki/entitlement:z --volume ${MOCMNT}:/extensions:z --user 0 $CNT -- $@; }
     COPY() { buildah --storage-driver vfs copy $CNT $@; }
     COMMIT() { buildah --storage-driver vfs commit $CNT $1; }
     ENTRYPOINT() { buildah config --entrypoint $1 $CNT; }
     WORKINGDIR() { buildah --storage-driver vfs config --workingdir $1 $CNT; }
     PUSH() { buildah --storage-driver vfs push --tls-verify=false --authfile /root/.dockercfg  $@; }
+
 
 ---
 apiVersion: v1
@@ -38,38 +43,39 @@ metadata:
   name: {{.SpecialResource.Name}}-install-dependencies
 data:
   install-dependencies.sh: |-
-    #!/bin/bash
+    #!/bin/bash -x
     
     UNAME=$(uname -r)
 
     # First update the base container to latest versions of everything
     yum update -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever={{.OperatingSystemDecimal}}
 
+    # Additional packages that are mandatory for driver-containers
+    yum -y --setopt=install_weak_deps=False --best install elfutils-libelf-devel kmod
+
+
     # Enable EUS and try to install kernel-devel and kernel-headers
     yum -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever={{.OperatingSystemDecimal}} \
       --setopt=install_weak_deps=False --best install \
       kernel-devel-${UNAME} kernel-headers-${UNAME} kernel-core-${UNAME}
     
-    # If EUS fails get kernel-devel and kernel-headers from machine-os-content
     if [ $? -eq 0 ]; then
-      echo "EUS - kernel-devel-${UNAME} kernel-headers-${UNAME}  kernel-core-${UNAME} installed"
-    else
-      echo "EUS FAILED - installing from payload"
-      KERNEL_DEVEL=$(find /tmp/overlay -name kernel-devel-${UNAME}.rpm -exec ls {} \; | tail)
-      KERNEL_HEADERS=$(find /tmp/overlay -name kernel-headers-${UNAME}.rpm -exec ls {} \; | tail)
-      KERNEL_CORE=$(find /tmp/overlay -name kernel-core-${UNAME}.rpm -exec ls {} \; | tail)
-       
-      echo "KERNEL DEVEL: $KERNEL_DEVEL"
-      echo "KERNEL HEADERS: $KERNEL_HEADERS"
-      echo "KERNEL CORE: $KERNEL_CORE"
-
-      yum -y --setopt=install_weak_deps=False --best install $KERNEL_DEVEL
-      yum -y --setopt=install_weak_deps=False --best install $KERNEL_HEADERS
-      yum -y --setopt=install_weak_deps=False --best install $KERNEL_CORE
+      echo "EUS - kernel-devel-${UNAME} kernel-headers-${UNAME} kernel-core-${UNAME} installed"
+      exit 0
     fi
 
-    # Additional packages that are mandatory for driver-containers
-    yum -y --setopt=install_weak_deps=False --best install elfutils-libelf-devel kmod
+    # If EUS fails get kernel-devel and kernel-headers from machine-os-content
+    echo "EUS FAILED - installing from machine-os-content"
+
+    KERNEL_DEVEL=$(find /extensions -name kernel-devel-${UNAME}.rpm -exec ls {} \; | tail -n1)
+    KERNEL_HEADERS=$(find /extensions -name kernel-headers-${UNAME}.rpm -exec ls {} \; | tail -n1) 
+    KERNEL_CORE=$(find /extensions -name kernel-core-${UNAME}.rpm -exec ls {} \; | tail -n1)
+       
+    yum -y --setopt=install_weak_deps=False --best install $KERNEL_DEVEL
+    yum -y --setopt=install_weak_deps=False --best install $KERNEL_HEADERS
+    # We do not need dependencies for kernel-core just install the RPM    
+    rpm -ivh --nodeps $KERNEL_CORE
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -91,8 +97,11 @@ data:
     SCRIPT_NAME=install-dependencies.sh
     TAG={{.SpecialResource.Namespace}}/{{.SpecialResource.Name}}:v${UNAME}
 
+   
     # --------- Container instructions START ----------------------------------
  
+    MOUNT_MACHINE_OS_CONTENT
+
     FROM registry.access.redhat.com/ubi8/ubi
 
     WORKINGDIR /tmp
@@ -110,6 +119,8 @@ data:
 
     COMMIT ${TAG}
     PUSH   ${TAG} image-registry.openshift-image-registry.svc:5000/${TAG}
+
+    UMOUNT_MACHINE_OS_CONTENT
 
     # --------- Container instructions END ------------------------------------
 
@@ -129,6 +140,9 @@ spec:
   - name: {{.SpecialResource.Name}}-ctr
     image: "registry.access.redhat.com/ubi8:latest"
     command: ["/bin/entrypoint.sh"]
+    securityContext:
+      seLinuxOptions:
+        type: spc_t
     volumeMounts:
         - name: entrypoint
           mountPath: /bin/entrypoint.sh
@@ -142,8 +156,8 @@ spec:
           mountPath: /bin/buildah-helper.sh
           readOnly: true
           subPath: buildah-helper.sh
-        - name: overlay
-          mountPath: /tmp/overlay
+        - name: authfile
+          mountPath: /var/lib/kubelet
           readOnly: true
         - name: dockercfg
           mountPath: /root
@@ -152,9 +166,9 @@ spec:
     - name: dockercfg
       secret:
         secretName: {{.PushSecretName}}
-    - name: overlay
+    - name: authfile
       hostPath:
-      path: /var/lib/containers/storage/overlay
+        path: /var/lib/kubelet
     - name: entrypoint
       configMap:
         defaultMode: 0700
