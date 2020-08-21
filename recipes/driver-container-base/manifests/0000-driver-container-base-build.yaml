@@ -123,8 +123,6 @@ data:
     UMOUNT_MACHINE_OS_CONTENT
 
     # --------- Container instructions END ------------------------------------
-
-    sleep infinity 
 ---
 apiVersion: v1
 kind: Pod

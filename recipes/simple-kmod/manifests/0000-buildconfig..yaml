@@ -73,9 +73,11 @@ spec:
 
   strategy:
     dockerStrategy:
-      buildArgs:
-        - name: {{(index .SpecialResource.Spec.DriverContainer.BuildArgs 0).Name}}
-          value: {{(index .SpecialResource.Spec.DriverContainer.BuildArgs 0).Value}}
+      buildArgs: 
+        {{ range .SpecialResource.Spec.DriverContainer.BuildArgs }}
+        - name: {{.Name}}
+          value: {{.Value}}
+        {{end}}
   output:
     to:
       kind: ImageStreamTag
