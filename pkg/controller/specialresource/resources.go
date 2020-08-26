@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"html/template"
-	"os"
-	"path/filepath"
 	"sort"
 
 	errs "github.com/pkg/errors"
@@ -66,17 +64,6 @@ func Add3dpartyResourcesToScheme(scheme *runtime.Scheme) error {
 	return nil
 }
 
-func filePathWalkDir(root string) ([]string, error) {
-	var files []string
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() {
-			files = append(files, path)
-		}
-		return nil
-	})
-	return files, err
-}
-
 func cacheNodes(r *ReconcileSpecialResource, force bool) (*unstructured.UnstructuredList, error) {
 
 	// The initial list is what we're working with
@@ -118,8 +105,40 @@ func getHardwareConfiguration(r *ReconcileSpecialResource) (*unstructured.Unstru
 
 	namespacedName := types.NamespacedName{Namespace: r.specialresource.Namespace, Name: r.specialresource.Name}
 	err := r.client.Get(context.TODO(), namespacedName, cm)
+
 	if apierrors.IsNotFound(err) {
-		return nil, errs.New("Hardware Configuration ConfigMap not found, see README and create the states for SpecialResource: " + r.specialresource.Name)
+		log.Info("Hardware Configuration ConfigMap not found, creating from local repository (/opt/sro/recipes) for SpecialResource: " + r.specialresource.Name)
+		manifests := "/opt/sro/recipes/" + r.specialresource.Name + "/manifests"
+		return getLocalHardwareConfiguration(manifests, r.specialresource.Name)
+	}
+
+	return cm, nil
+}
+
+func getLocalHardwareConfiguration(path string, specialresource string) (*unstructured.Unstructured, error) {
+
+	cm := &unstructured.Unstructured{}
+	cm.SetAPIVersion("v1")
+	cm.SetKind("ConfigMap")
+	cm.SetName(specialresource)
+
+	manifests := getAssetsFrom(path)
+
+	for _, manifest := range manifests {
+
+		log.Info("MANIFESTS", "name", manifest.name)
+		log.Info("MANIFESTS", "content", manifest.content)
+
+		data := make(map[string]interface{})
+
+		if err := unstructured.SetNestedMap(cm.Object, data, "data"); err != nil {
+			return cm, errs.Wrap(err, "Couldn't update ConfigMap data field")
+		}
+
+		if err := unstructured.SetNestedField(cm.Object, string(manifest.content), "data", manifest.name); err != nil {
+			return cm, errs.Wrap(err, "Couldn't update ConfigMap with "+manifest.name)
+		}
+
 	}
 
 	return cm, nil

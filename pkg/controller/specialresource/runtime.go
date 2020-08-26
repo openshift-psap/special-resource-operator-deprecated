@@ -317,3 +317,89 @@ func getProxyConfiguration(r *ReconcileSpecialResource) (proxyConfiguration, err
 
 	return proxy, nil
 }
+
+func setupProxy(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+
+	if strings.Compare(obj.GetKind(), "Pod") == 0 {
+		if err := setupPodProxy(obj, r); err != nil {
+			return errs.Wrap(err, "Cannot setup Pod Proxy")
+		}
+	}
+	if strings.Compare(obj.GetKind(), "DaemonSet") == 0 {
+		if err := setupDaemonSetProxy(obj, r); err != nil {
+			return errs.Wrap(err, "Cannot setup DaemonSet Proxy")
+		}
+
+	}
+
+	return nil
+}
+
+// We may generalize more depending on how many entities need proxy settings.
+// path... -> Pod, DaemonSet, BuildConfig, etc.
+func setupDaemonSetProxy(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+	containers, found, err := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "containers")
+	exitOnErrorOrNotFound(found, err)
+
+	if err := setupContainersProxy(containers); err != nil {
+		return errs.Wrap(err, "Cannot set proxy for Pod")
+	}
+
+	return nil
+}
+
+func setupPodProxy(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
+
+	containers, found, err := unstructured.NestedSlice(obj.Object, "spec", "containers")
+	exitOnErrorOrNotFound(found, err)
+
+	if err := setupContainersProxy(containers); err != nil {
+		return errs.Wrap(err, "Cannot set proxy for Pod")
+	}
+
+	return nil
+}
+
+func setupContainersProxy(containers []interface{}) error {
+
+	for _, container := range containers {
+		switch container := container.(type) {
+		case map[string]interface{}:
+			env, found, err := unstructured.NestedSlice(container, "env")
+			exitOnError(err)
+
+			// If env not found we are creating a new env slice
+			// otherwise we're appending it to the existing env slice
+			httpproxy := make(map[string]interface{})
+			httpsproxy := make(map[string]interface{})
+			noproxy := make(map[string]interface{})
+
+			httpproxy["name"] = "HTTP_PROXY"
+			httpproxy["value"] = runInfo.Proxy.HttpProxy
+
+			httpsproxy["name"] = "HTTPS_PROXY"
+			httpsproxy["value"] = runInfo.Proxy.HttpsProxy
+
+			noproxy["name"] = "NO_PROXY"
+			noproxy["value"] = runInfo.Proxy.NoProxy
+
+			if !found {
+				env = make([]interface{}, 0)
+			}
+
+			env = append(env, httpproxy)
+			env = append(env, httpsproxy)
+			env = append(env, noproxy)
+
+			if err := unstructured.SetNestedSlice(container, env, "env"); err != nil {
+				errs.Wrap(err, "Cannot set env for container")
+			}
+
+		default:
+			log.Info("container", "DEFAULT NOT THE CORRECT TYPE", container)
+		}
+		break
+	}
+
+	return nil
+}

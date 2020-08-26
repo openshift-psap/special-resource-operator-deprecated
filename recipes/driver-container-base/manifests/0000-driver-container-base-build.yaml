@@ -127,6 +127,8 @@ data:
 apiVersion: v1
 kind: Pod
 metadata:
+  annotations: 
+    specialresource.openshift.io/proxy: "true"
   labels:
     app: {{.SpecialResource.Name}}
   name: {{.SpecialResource.Name}}
@@ -137,13 +139,6 @@ spec:
   containers:
   - name: {{.SpecialResource.Name}}-ctr
     image: "registry.access.redhat.com/ubi8:latest"
-    env: 
-    - name: HTTP_PROXY
-      value: {{.Proxy.HttpProxy}}
-    - name: HTTPS_PROXY
-      value: {{.Proxy.HttpsProxy}}
-    - name: NO_PROXY
-      value: {{.Proxy.NoProxy}}
     command: ["/bin/entrypoint.sh"]
     securityContext:
       seLinuxOptions:

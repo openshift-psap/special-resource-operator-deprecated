@@ -26,12 +26,20 @@ func beforeCRUDhooks(obj *unstructured.Unstructured, r *ReconcileSpecialResource
 	todo := ""
 	annotations := obj.GetAnnotations()
 
+	if proxy, found := annotations["specialresource.openshift.io/proxy"]; found && proxy == "true" {
+		if err := setupProxy(obj, r); err != nil {
+			return errs.Wrap(err, "Could not setup Proxy")
+		}
+	}
+
 	if todo, found = annotations["specialresource.openshift.io/callback"]; !found {
 		return nil
 	}
 
 	if prefix, ok := customCallback[todo]; ok {
-		return prefix(obj, r)
+		if err := prefix(obj, r); err != nil {
+			return errs.Wrap(err, "Could not run prefix callback")
+		}
 	}
 	return nil
 }
@@ -42,19 +50,19 @@ func afterCRUDhooks(obj *unstructured.Unstructured, r *ReconcileSpecialResource)
 
 	if state, found := annotations["specialresource.openshift.io/state"]; found && state == "driver-container" {
 		if err := checkForImagePullBackOff(obj, r); err != nil {
-			return err
+			return errs.Wrap(err, "Cannot check for ImagePullBackOff")
 		}
 	}
 
 	if wait, found := annotations["specialresource.openshift.io/wait"]; found && wait == "true" {
 		if err := waitForResource(obj, r); err != nil {
-			return err
+			return errs.Wrap(err, "Could not wait for resource")
 		}
 	}
 
 	if pattern, found := annotations["specialresrouce.openshift.io/wait-for-logs"]; found && len(pattern) > 0 {
 		if err := waitForDaemonSetLogs(obj, r, pattern); err != nil {
-			return err
+			return errs.Wrap(err, "Could not wait for DaemonSet logs")
 		}
 	}
 

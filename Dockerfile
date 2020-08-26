@@ -6,6 +6,9 @@ RUN GO111MODULE=on make build
 FROM openshift/origin-base
 COPY --from=builder /go/src/github.com/openshift-psap/special-resource-operator/special-resource-operator /usr/bin/
 
+COPY recipes /opt/sro/recipes
+
+
 RUN useradd special-resource-operator
 USER special-resource-operator
 ENTRYPOINT ["/usr/bin/special-resource-operator"]
