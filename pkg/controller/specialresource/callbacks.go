@@ -108,7 +108,7 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 
 		if containerStatuses, found, err = unstructured.NestedSlice(pod.Object, "status", "containerStatuses"); !found || err != nil {
 			phase, found, err := unstructured.NestedString(pod.Object, "status", "phase")
-			checkNestedFields(found, err)
+			exitOnErrorOrNotFound(found, err)
 			log.Info("Pod is in phase: " + phase)
 			continue
 		}

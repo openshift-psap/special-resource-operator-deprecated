@@ -31,7 +31,13 @@ func AddConfiglient(cfg *rest.Config) error {
 	return nil
 }
 
-func checkNestedFields(found bool, err error) {
+func warnOnErrorOrNotFound(found bool, err error) {
+	if !found || err != nil {
+		log.Error(err, "Not found")
+	}
+}
+
+func exitOnErrorOrNotFound(found bool, err error) {
 	if !found || err != nil {
 		log.Error(err, "")
 		os.Exit(1)

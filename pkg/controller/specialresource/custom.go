@@ -29,15 +29,15 @@ func getPromURLPass(obj *unstructured.Unstructured, r *ReconcileSpecialResource)
 	}
 
 	datasources, found, err := unstructured.NestedSlice(sec.Object, "datasources")
-	checkNestedFields(found, err)
+	exitOnErrorOrNotFound(found, err)
 
 	for _, datasource := range datasources {
 		switch datasource := datasource.(type) {
 		case map[string]interface{}:
 			promURL, found, err = unstructured.NestedString(datasource, "url")
-			checkNestedFields(found, err)
+			exitOnErrorOrNotFound(found, err)
 			promPass, found, err = unstructured.NestedString(datasource, "basicAuthPassword")
-			checkNestedFields(found, err)
+			exitOnErrorOrNotFound(found, err)
 		default:
 			log.Info("PROM", "DEFAULT NOT THE CORRECT TYPE", promURL)
 		}
@@ -50,7 +50,7 @@ func getPromURLPass(obj *unstructured.Unstructured, r *ReconcileSpecialResource)
 func customGrafanaConfigMap(obj *unstructured.Unstructured, r *ReconcileSpecialResource) error {
 
 	promData, found, err := unstructured.NestedString(obj.Object, "data", "ocp-prometheus.yml")
-	checkNestedFields(found, err)
+	exitOnErrorOrNotFound(found, err)
 
 	promURL, promPass, err := getPromURLPass(obj, r)
 	if err != nil {

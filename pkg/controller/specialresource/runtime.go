@@ -39,6 +39,13 @@ type resourceStateName struct {
 	*/
 }
 
+type proxyConfiguration struct {
+	HttpProxy  string
+	HttpsProxy string
+	NoProxy    string
+	TrustedCA  string
+}
+
 type runtimeInformation struct {
 	OperatingSystemMajor      string
 	OperatingSystemMajorMinor string
@@ -49,6 +56,7 @@ type runtimeInformation struct {
 	PushSecretName            string
 	OSImageURL                string
 
+	Proxy           proxyConfiguration
 	GroupName       resourceGroupName
 	StateName       resourceStateName
 	SpecialResource srov1alpha1.SpecialResource
@@ -81,6 +89,7 @@ func logRuntimeInformation() {
 	log.Info("Runtime Information", "UpdateVendor", runInfo.UpdateVendor)
 	log.Info("Runtime Information", "PushSecretName", runInfo.PushSecretName)
 	log.Info("Runtime Information", "OSImageURL", runInfo.OSImageURL)
+	log.Info("Runtime Information", "Proxy", runInfo.Proxy)
 }
 
 func getRuntimeInformation(r *ReconcileSpecialResource) {
@@ -100,6 +109,9 @@ func getRuntimeInformation(r *ReconcileSpecialResource) {
 
 	runInfo.OSImageURL, err = getOSImageURL(r)
 	exitOnError(errs.Wrap(err, "Failed to get OSImageURL"))
+
+	runInfo.Proxy, err = getProxyConfiguration(r)
+	exitOnError(errs.Wrap(err, "Failed to get Proxy Configuration"))
 
 	r.specialresource.DeepCopyInto(&runInfo.SpecialResource)
 }
@@ -252,8 +264,56 @@ func getOSImageURL(r *ReconcileSpecialResource) (string, error) {
 	}
 
 	osImageURL, found, err := unstructured.NestedString(cm.Object, "data", "osImageURL")
-	checkNestedFields(found, err)
+	exitOnErrorOrNotFound(found, err)
 
 	return osImageURL, nil
 
+}
+
+func getProxyConfiguration(r *ReconcileSpecialResource) (proxyConfiguration, error) {
+
+	proxy := proxyConfiguration{}
+
+	cfgs := &unstructured.UnstructuredList{}
+	cfgs.SetAPIVersion("config.openshift.io/v1")
+	cfgs.SetKind("ProxyList")
+
+	opts := &client.ListOptions{}
+
+	err := r.client.List(context.TODO(), opts, cfgs)
+	if err != nil {
+		return proxy, errors.Wrap(err, "Client cannot get ProxyList")
+	}
+
+	for _, cfg := range cfgs.Items {
+		cfgName := cfg.GetName()
+
+		var fnd bool
+		var err error
+		// If no proxy is configured, we do not exit we just give a warning
+		// and initialized the Proxy struct with zero sized strings
+		if strings.Contains(cfgName, "cluster") {
+			if proxy.HttpProxy, fnd, err = unstructured.NestedString(cfg.Object, "spec", "httpProxy"); err != nil {
+				warnOnErrorOrNotFound(fnd, err)
+				proxy.HttpProxy = ""
+			}
+
+			if proxy.HttpsProxy, fnd, err = unstructured.NestedString(cfg.Object, "spec", "httpsProxy"); err != nil {
+				warnOnErrorOrNotFound(fnd, err)
+				proxy.HttpsProxy = ""
+			}
+
+			if proxy.NoProxy, fnd, err = unstructured.NestedString(cfg.Object, "spec", "noProxy"); err != nil {
+				warnOnErrorOrNotFound(fnd, err)
+				proxy.NoProxy = ""
+			}
+
+			if proxy.TrustedCA, fnd, err = unstructured.NestedString(cfg.Object, "spec", "trustedCA", "name"); err != nil {
+				warnOnErrorOrNotFound(fnd, err)
+				proxy.TrustedCA = ""
+			}
+		}
+	}
+
+	return proxy, nil
 }

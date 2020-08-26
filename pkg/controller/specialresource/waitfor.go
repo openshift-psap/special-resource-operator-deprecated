@@ -45,7 +45,7 @@ func makeStatusCallback(obj *unstructured.Unstructured, status interface{}, fiel
 		case int64:
 			expected := _status.(int64)
 			current, found, err := unstructured.NestedInt64(obj.Object, _fields...)
-			checkNestedFields(found, err)
+			exitOnErrorOrNotFound(found, err)
 
 			if current == int64(expected) {
 				return true
@@ -55,7 +55,7 @@ func makeStatusCallback(obj *unstructured.Unstructured, status interface{}, fiel
 		case int:
 			expected := _status.(int)
 			current, found, err := unstructured.NestedInt64(obj.Object, _fields...)
-			checkNestedFields(found, err)
+			exitOnErrorOrNotFound(found, err)
 
 			if int(current) == int(expected) {
 				return true
@@ -65,7 +65,7 @@ func makeStatusCallback(obj *unstructured.Unstructured, status interface{}, fiel
 		case string:
 			expected := _status.(string)
 			current, found, err := unstructured.NestedString(obj.Object, _fields...)
-			checkNestedFields(found, err)
+			exitOnErrorOrNotFound(found, err)
 
 			if stat := strings.Compare(current, expected); stat == 0 {
 				return true
@@ -115,7 +115,7 @@ func waitForDaemonSetCallback(obj *unstructured.Unstructured) bool {
 	callback = func(obj *unstructured.Unstructured) bool { return false }
 
 	node.count, found, err = unstructured.NestedInt64(obj.Object, "status", "desiredNumberScheduled")
-	checkNestedFields(found, err)
+	exitOnErrorOrNotFound(found, err)
 
 	_, found, err = unstructured.NestedInt64(obj.Object, "status", "numberUnavailable")
 	if found {

@@ -106,3 +106,8 @@ rules:
 - apiGroups: ["monitoring.coreos.com"]
   resources: ["prometheusrules"]
   verbs: ["get", "watch", "list", "create", "update", "delete"]
+- apiGroups: ["config.openshift.io"]
+  resources: ["proxies"]
+  verbs: ["get", "watch", "list"]
+
+

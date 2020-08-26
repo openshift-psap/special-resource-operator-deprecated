@@ -133,7 +133,7 @@ func ReconcileHardwareStates(r *ReconcileSpecialResource, config unstructured.Un
 	var found bool
 
 	manifests, found, err = unstructured.NestedMap(config.Object, "data")
-	checkNestedFields(found, err)
+	exitOnErrorOrNotFound(found, err)
 
 	states := make([]string, 0, len(manifests))
 	for key := range manifests {
@@ -217,6 +217,7 @@ func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 		if err != nil {
 			return errs.Wrap(err, "Could not convert yaml file to json"+string(yamlSpec))
 		}
+
 		err = obj.UnmarshalJSON(jsonSpec)
 		exitOnError(errs.Wrap(err, "Cannot unmarshall json spec, check your manifests"))
 
@@ -272,7 +273,7 @@ func updateResourceVersion(req *unstructured.Unstructured, found *unstructured.U
 
 	if needToUpdateResourceVersion(kind) {
 		version, fnd, err := unstructured.NestedString(found.Object, "metadata", "resourceVersion")
-		checkNestedFields(fnd, err)
+		exitOnErrorOrNotFound(fnd, err)
 
 		if err := unstructured.SetNestedField(req.Object, version, "metadata", "resourceVersion"); err != nil {
 			return errs.Wrap(err, "Couldn't update ResourceVersion")
@@ -281,7 +282,7 @@ func updateResourceVersion(req *unstructured.Unstructured, found *unstructured.U
 	}
 	if kind == "Service" {
 		clusterIP, fnd, err := unstructured.NestedString(found.Object, "spec", "clusterIP")
-		checkNestedFields(fnd, err)
+		exitOnErrorOrNotFound(fnd, err)
 
 		if err := unstructured.SetNestedField(req.Object, clusterIP, "spec", "clusterIP"); err != nil {
 			return errs.Wrap(err, "Couldn't update clusterIP")
