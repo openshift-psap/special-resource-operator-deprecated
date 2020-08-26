@@ -19,6 +19,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"./pkg/apis/sro/v1alpha1.SpecialResourceDriverContainer": schema_pkg_apis_sro_v1alpha1_SpecialResourceDriverContainer(ref),
 		"./pkg/apis/sro/v1alpha1.SpecialResourceGit":             schema_pkg_apis_sro_v1alpha1_SpecialResourceGit(ref),
 		"./pkg/apis/sro/v1alpha1.SpecialResourceImages":          schema_pkg_apis_sro_v1alpha1_SpecialResourceImages(ref),
+		"./pkg/apis/sro/v1alpha1.SpecialResourceMetadata":        schema_pkg_apis_sro_v1alpha1_SpecialResourceMetadata(ref),
 		"./pkg/apis/sro/v1alpha1.SpecialResourceNode":            schema_pkg_apis_sro_v1alpha1_SpecialResourceNode(ref),
 		"./pkg/apis/sro/v1alpha1.SpecialResourcePaths":           schema_pkg_apis_sro_v1alpha1_SpecialResourcePaths(ref),
 		"./pkg/apis/sro/v1alpha1.SpecialResourceRunArgs":         schema_pkg_apis_sro_v1alpha1_SpecialResourceRunArgs(ref),
@@ -329,6 +330,26 @@ func schema_pkg_apis_sro_v1alpha1_SpecialResourceImages(ref common.ReferenceCall
 	}
 }
 
+func schema_pkg_apis_sro_v1alpha1_SpecialResourceMetadata(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "SpecialResourceMetadata is metadata associated with a SpecialResource",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
+				Required: []string{"namespace"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_sro_v1alpha1_SpecialResourceNode(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -428,10 +449,15 @@ func schema_pkg_apis_sro_v1alpha1_SpecialResourceSpec(ref common.ReferenceCallba
 				Description: "SpecialResourceSpec defines the desired state of SpecialResource",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"driverContainer": {
+					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Description: "INSERT ADDITIONAL SPEC FIELDS - desired state of cluster Important: Run \"operator-sdk generate k8s\" to regenerate code after modifying this file Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html",
-							Ref:         ref("./pkg/apis/sro/v1alpha1.SpecialResourceDriverContainer"),
+							Ref:         ref("./pkg/apis/sro/v1alpha1.SpecialResourceMetadata"),
+						},
+					},
+					"driverContainer": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("./pkg/apis/sro/v1alpha1.SpecialResourceDriverContainer"),
 						},
 					},
 					"node": {
@@ -455,7 +481,7 @@ func schema_pkg_apis_sro_v1alpha1_SpecialResourceSpec(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/sro/v1alpha1.SpecialResourceDependency", "./pkg/apis/sro/v1alpha1.SpecialResourceDriverContainer", "./pkg/apis/sro/v1alpha1.SpecialResourceNode"},
+			"./pkg/apis/sro/v1alpha1.SpecialResourceDependency", "./pkg/apis/sro/v1alpha1.SpecialResourceDriverContainer", "./pkg/apis/sro/v1alpha1.SpecialResourceMetadata", "./pkg/apis/sro/v1alpha1.SpecialResourceNode"},
 	}
 }
 

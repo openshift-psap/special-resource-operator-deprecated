@@ -46,10 +46,8 @@ spec:
                 type: object
               type: array
             driverContainer:
-              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                Important: Run "operator-sdk generate k8s" to regenerate code after
-                modifying this file Add custom validation using kubebuilder tags:
-                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+              description: SpecialResourceDriverContainer defines the desired state
+                of SpecialResource
               properties:
                 artifacts:
                   description: SpecialResourceArtifacts defines the observed state
@@ -166,6 +164,17 @@ spec:
                       - uri
                       type: object
                   type: object
+              type: object
+            metadata:
+              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                Important: Run "operator-sdk generate k8s" to regenerate code after
+                modifying this file Add custom validation using kubebuilder tags:
+                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+              properties:
+                namespace:
+                  type: string
+              required:
+              - namespace
               type: object
             node:
               description: SpecialResourceNode defines the observed state of SpecialResource

@@ -132,9 +132,6 @@ func getOperatingSystem() (string, string, string, error) {
 		nodeOSmaj = labels[os+".VERSION_ID.major"]
 		nodeOSmin = labels[os+".VERSION_ID.minor"]
 
-		log.Info("DEBUG", "LOG", labels[os+".ID"])
-		log.Info("DEBUG", "LOG", labels[os+".VERSION_ID.major"])
-
 		if len(nodeOSrel) == 0 || len(nodeOSmaj) == 0 {
 			return "", "", "", errs.New("Cannot extract " + os + ".*, is NFD running? Check node labels")
 		}

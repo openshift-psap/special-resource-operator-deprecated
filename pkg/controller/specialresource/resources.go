@@ -126,9 +126,6 @@ func getLocalHardwareConfiguration(path string, specialresource string) (*unstru
 
 	for _, manifest := range manifests {
 
-		log.Info("MANIFESTS", "name", manifest.name)
-		log.Info("MANIFESTS", "content", manifest.content)
-
 		data := make(map[string]interface{})
 
 		if err := unstructured.SetNestedMap(cm.Object, data, "data"); err != nil {
@@ -191,11 +188,31 @@ func ReconcileHardwareConfigurations(r *ReconcileSpecialResource) error {
 	getRuntimeInformation(r)
 	logRuntimeInformation()
 
+	createSpecialResourceNamespace(r)
+
 	if err := ReconcileHardwareStates(r, *config); err != nil {
 		return errs.Wrap(err, "Cannot reconcile hardware states")
 	}
 
 	return nil
+}
+
+func createSpecialResourceNamespace(r *ReconcileSpecialResource) {
+
+	ns := []byte("apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ")
+
+	if r.specialresource.Spec.Metadata.Namespace != "" {
+		add := []byte(r.specialresource.Spec.Metadata.Namespace)
+		ns = append(ns, add...)
+	} else {
+		r.specialresource.Spec.Metadata.Namespace = r.specialresource.Name
+		add := []byte(r.specialresource.Spec.Metadata.Namespace)
+		ns = append(ns, add...)
+	}
+	if err := createFromYAML(ns, r); err != nil {
+		log.Info("Cannot reconcile specialresource namespace, something went horribly wrong")
+		exitOnError(err)
+	}
 }
 
 func templateRuntimeInformation(yamlSpec *[]byte, r runtimeInformation) error {
@@ -214,7 +231,7 @@ func templateRuntimeInformation(yamlSpec *[]byte, r runtimeInformation) error {
 
 func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
 
-	namespace := r.specialresource.Namespace
+	namespace := r.specialresource.Spec.Metadata.Namespace
 	scanner := yamlutil.NewYAMLScanner(yamlFile)
 
 	for scanner.Scan() {

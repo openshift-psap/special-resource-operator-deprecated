@@ -92,12 +92,19 @@ type SpecialResourceDependency struct {
 	Namespace string `json:"namespace"`
 }
 
+// SpecialResourceMetadata is metadata associated with a SpecialResource
+// +k8s:openapi-gen=true
+type SpecialResourceMetadata struct {
+	Namespace string `json:"namespace"`
+}
+
 // SpecialResourceSpec defines the desired state of SpecialResource
 // +k8s:openapi-gen=true
 type SpecialResourceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+	Metadata        SpecialResourceMetadata        `json:"metadata,omitempty"`
 	DriverContainer SpecialResourceDriverContainer `json:"driverContainer,omitempty"`
 	Node            SpecialResourceNode            `json:"node,omitempty"`
 	DependsOn       []SpecialResourceDependency    `json:"dependsOn,omitempty"`
