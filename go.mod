@@ -2,25 +2,18 @@ module github.com/openshift-psap/special-resource-operator
 
 require (
 	github.com/coreos/prometheus-operator v0.29.0
-	github.com/docker/go-connections v0.4.0 // indirect
-	github.com/docker/go-metrics v0.0.1 // indirect
-	github.com/docker/go-units v0.4.0 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.0
-	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/openshift/api v0.0.0-20190508214137-81d064c11ff2
 	github.com/openshift/client-go v0.0.0-20190412095722-0255926f5393
-	github.com/openshift/oc v4.2.0-alpha.0+incompatible
-	github.com/operator-framework/operator-sdk v0.10.1-0.20190916192541-244ae8692d2d
+	github.com/operator-framework/operator-sdk v0.0.0-00010101000000-000000000000
 	github.com/pkg/errors v0.8.1
+	github.com/prometheus/client_golang v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.3
-	github.com/zvonkok/special-resource-operator v0.0.0-20191011202201-a45efa819714 // indirect
 	// CVE-2020-14040
 	golang.org/x/text v0.3.3 // indirect
-	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
-	gopkg.in/ldap.v2 v2.5.1 // indirect
 	k8s.io/api v0.0.0-20190612125737-db0771252981
-	k8s.io/apimachinery v0.0.0-20190612125636-6a5db36e93ad
+	k8s.io/apimachinery v0.18.2-beta.0
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/kube-openapi v0.0.0-20190603182131-db7b694dc208
 	sigs.k8s.io/controller-runtime v0.1.12

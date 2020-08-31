@@ -230,7 +230,7 @@ func getPushSecretName(r *ReconcileSpecialResource) (string, error) {
 	secrets.SetKind("SecretList")
 
 	opts := &client.ListOptions{}
-	opts.InNamespace(r.specialresource.GetNamespace())
+	opts.InNamespace(r.specialresource.Spec.Metadata.Namespace)
 
 	err := r.client.List(context.TODO(), opts, secrets)
 	if err != nil {

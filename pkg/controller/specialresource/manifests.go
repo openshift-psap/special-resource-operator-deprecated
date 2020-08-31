@@ -15,7 +15,7 @@ type assetsFromFile struct {
 func getAssetsFrom(asset string) []assetsFromFile {
 
 	manifests := []assetsFromFile{}
-	files, err := filePathWalkDir(asset)
+	files, err := filePathWalkDir(asset, ".yaml")
 	if err != nil {
 		panic(err)
 	}
@@ -29,10 +29,13 @@ func getAssetsFrom(asset string) []assetsFromFile {
 	return manifests
 }
 
-func filePathWalkDir(root string) ([]string, error) {
+func filePathWalkDir(root string, ext string) ([]string, error) {
 	var files []string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() {
+		if info.IsDir() {
+			return nil
+		}
+		if filepath.Ext(path) == ext {
 			files = append(files, path)
 		}
 		return nil

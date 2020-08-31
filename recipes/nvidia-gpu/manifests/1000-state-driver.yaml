@@ -29,7 +29,7 @@ subjects:
 - kind: ServiceAccount
   name: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
 userNames:
-- system:serviceaccount:{{.SpecialResource.Namespace}}:{{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}
+- system:serviceaccount:{{.SpecialResource.Spec.Metadata.Namespace}}:{{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -38,24 +38,6 @@ metadata:
 data:
   entrypoint.sh: |-
     #!/bin/bash -x
-
-    # Enable EUS and try to install kernel-devel and kernel-headers 
-    dnf -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever=8.2 install \ 
-    kernel-devel-$(uname -r) kernel-headers-$(uname -r) kernel-core-$(uname -r)
-
-    # If EUS fails get kernel-devel and kernel-headers from machine-os-content
-    if [ $? -eq 0 ]; then
-      echo "EUS - kernel-devel-$(uname -r) kernel-headers-$(uname -r)  kernel-core-$(uname -r) installed"
-    else
-      echo "EUS FAILED - installing from payload"
-      KERNEL_DEVEL=$(find /tmp/overlay -name kernel-devel-$(uname -r).rpm -exec ls {} \; | tail)
-      KERNEL_HEADERS=$(find /tmp/overlay -name kernel-headers-$(uname -r).rpm -exec ls {} \; | tail)
-      KERNEL_CORE=$(find /tmp/overlay -name kernel-core-$(uname -r).rpm -exec ls {} \; | tail)
-
-      dnf -y install $KERNEL_DEVEL
-      dnf -y install $KERNEL_HEADERS
-      dnf -y install $KERNEL_CORE
-    fi
 
     nvidia-driver init 
 ---
@@ -103,7 +85,7 @@ seccompProfiles:
 supplementalGroups:
   type: RunAsAny
 users:
-- system:serviceaccount:{{.SpecialResource.Namespace}}:{{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
+- system:serviceaccount:{{.SpecialResource.Spec.Metadata.Namespace}}:{{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
 volumes:
 - '*'
 ---
@@ -142,7 +124,7 @@ spec:
       serviceAccountName: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
       hostPID: true
       containers:
-      - image: image-registry.openshift-image-registry.svc:5000/{{.SpecialResource.Namespace}}/{{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}:v{{.KernelVersion}}
+      - image: image-registry.openshift-image-registry.svc:5000/{{.SpecialResource.Spec.Metadata.Namespace}}/{{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}:v{{.KernelVersion}}
         imagePullPolicy: Always
         name: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
         command: ["/bin/entrypoint.sh"]
@@ -158,13 +140,7 @@ spec:
             mountPath: /bin/entrypoint.sh
             readOnly: true
             subPath: entrypoint.sh
-          - name: overlay
-            mountPath: /tmp/overlay
-            readOnly: true
       volumes:
-        - name: overlay
-          hostPath:
-            path: /var/lib/containers/storage/overlay
         - name: run-{{.SpecialResource.Name}}
           hostPath:
             path: /run/nvidia

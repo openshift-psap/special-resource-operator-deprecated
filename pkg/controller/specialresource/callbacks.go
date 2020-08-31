@@ -77,8 +77,6 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 		return nil
 	}
 
-	log.Info("checkForImagePullBackOff get pods")
-
 	labels := obj.GetLabels()
 	value := labels["app"]
 
@@ -91,9 +89,9 @@ func checkForImagePullBackOff(obj *unstructured.Unstructured, r *ReconcileSpecia
 	pods.SetKind("PodList")
 
 	opts := &client.ListOptions{}
-	opts.InNamespace(r.specialresource.Namespace)
+	opts.InNamespace(r.specialresource.Spec.Metadata.Namespace)
 	opts.MatchingLabels(find)
-	log.Info("checkForImagePullBackOff get PodList")
+	log.Info("checkForImagePullBackOff get PodList from: " + r.specialresource.Spec.Metadata.Namespace)
 
 	err := r.client.List(context.TODO(), opts, pods)
 	if err != nil {

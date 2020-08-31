@@ -15,9 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -192,7 +190,9 @@ func (r *ReconcileSpecialResource) Reconcile(request reconcile.Request) (reconci
 
 			if r.specialresource, err = getSpecialResourceFrom(dependency, r); err != nil {
 				log.Info("Could not get SpecialResource dependency", "error", fmt.Sprintf("%v", err))
-				return reconcile.Result{}, errs.New("Dependency check failed")
+				if r.specialresource, err = createSpecialResourceFrom(dependency, r); err != nil {
+					return reconcile.Result{}, errs.New("Dependency creation failed")
+				}
 			}
 
 			log.Info("Reconciling", "SpecialResource", dependency)
@@ -215,32 +215,4 @@ func (r *ReconcileSpecialResource) Reconcile(request reconcile.Request) (reconci
 	}
 
 	return reconcile.Result{}, nil
-}
-
-func getSpecialResourceFrom(dependency srov1alpha1.SpecialResourceDependency, r *ReconcileSpecialResource) (srov1alpha1.SpecialResource, error) {
-
-	// Fetch the SpecialResource instance
-	specialresource := srov1alpha1.SpecialResource{}
-
-	log.Info("Looking for", "SpecialResourceName", dependency.Name)
-	log.Info("Looking for", "SpecialResourceNamespace", dependency.Namespace)
-
-	namespacedName := types.NamespacedName{Namespace: dependency.Namespace, Name: dependency.Name}
-	err := r.client.Get(context.TODO(), namespacedName, &specialresource)
-
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			return specialresource, errs.Wrap(err, "Is not found Error")
-		}
-		if apierrors.IsForbidden(err) {
-			return specialresource, errs.Wrap(err, "Forbidden check Role, ClusterRole and Bindings for operator")
-		}
-
-		// Error reading the object
-		return specialresource, errs.Wrap(err, "Unexpected error")
-	}
-
-	return specialresource, nil
 }

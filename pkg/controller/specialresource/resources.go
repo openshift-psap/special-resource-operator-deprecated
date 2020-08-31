@@ -9,6 +9,7 @@ import (
 	errs "github.com/pkg/errors"
 
 	monitoringV1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	srov1alpha1 "github.com/openshift-psap/special-resource-operator/pkg/apis/sro/v1alpha1"
 	"github.com/openshift-psap/special-resource-operator/pkg/yamlutil"
 	buildV1 "github.com/openshift/api/build/v1"
 	imageV1 "github.com/openshift/api/image/v1"
@@ -60,7 +61,9 @@ func Add3dpartyResourcesToScheme(scheme *runtime.Scheme) error {
 	if err := monitoringV1.AddToScheme(scheme); err != nil {
 		return err
 	}
-
+	if err := srov1alpha1.AddToScheme(scheme); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -103,7 +106,7 @@ func getHardwareConfiguration(r *ReconcileSpecialResource) (*unstructured.Unstru
 	cm.SetAPIVersion("v1")
 	cm.SetKind("ConfigMap")
 
-	namespacedName := types.NamespacedName{Namespace: r.specialresource.Namespace, Name: r.specialresource.Name}
+	namespacedName := types.NamespacedName{Namespace: r.specialresource.Spec.Metadata.Namespace, Name: r.specialresource.Name}
 	err := r.client.Get(context.TODO(), namespacedName, cm)
 
 	if apierrors.IsNotFound(err) {
@@ -124,18 +127,14 @@ func getLocalHardwareConfiguration(path string, specialresource string) (*unstru
 
 	manifests := getAssetsFrom(path)
 
+	data := map[string]string{}
+
 	for _, manifest := range manifests {
+		data[string(manifest.name)] = string(manifest.content)
+	}
 
-		data := make(map[string]interface{})
-
-		if err := unstructured.SetNestedMap(cm.Object, data, "data"); err != nil {
-			return cm, errs.Wrap(err, "Couldn't update ConfigMap data field")
-		}
-
-		if err := unstructured.SetNestedField(cm.Object, string(manifest.content), "data", manifest.name); err != nil {
-			return cm, errs.Wrap(err, "Couldn't update ConfigMap with "+manifest.name)
-		}
-
+	if err := unstructured.SetNestedStringMap(cm.Object, data, "data"); err != nil {
+		return cm, errs.Wrap(err, "Couldn't update ConfigMap data field")
 	}
 
 	return cm, nil
@@ -162,7 +161,7 @@ func ReconcileHardwareStates(r *ReconcileSpecialResource, config unstructured.Un
 
 		log.Info("Executing", "State", state)
 		namespacedYAML := []byte(manifests[state].(string))
-		if err := createFromYAML(namespacedYAML, r); err != nil {
+		if err := createFromYAML(namespacedYAML, r, r.specialresource.Spec.Metadata.Namespace); err != nil {
 			return errs.Wrap(err, "Failed to create resources")
 		}
 	}
@@ -176,6 +175,15 @@ func ReconcileHardwareConfigurations(r *ReconcileSpecialResource) error {
 	var err error
 	var config *unstructured.Unstructured
 
+	// Leave this here, this is crucial for all following work
+	// Creating and setting the working namespace for the specialresource
+	// specialresource name == namespace if not metadata.namespace is set
+	createSpecialResourceNamespace(r)
+
+	// Check if we have a ConfigMap deployed in the specialresrouce
+	// namespace if not fallback to the local repository.
+	// ConfigMap can be used to overrride the local repository manifests
+	// for testing.
 	if config, err = getHardwareConfiguration(r); err != nil {
 		return errs.Wrap(err, "Error reconciling Hardware Configuration States")
 	}
@@ -187,8 +195,6 @@ func ReconcileHardwareConfigurations(r *ReconcileSpecialResource) error {
 
 	getRuntimeInformation(r)
 	logRuntimeInformation()
-
-	createSpecialResourceNamespace(r)
 
 	if err := ReconcileHardwareStates(r, *config); err != nil {
 		return errs.Wrap(err, "Cannot reconcile hardware states")
@@ -209,7 +215,7 @@ func createSpecialResourceNamespace(r *ReconcileSpecialResource) {
 		add := []byte(r.specialresource.Spec.Metadata.Namespace)
 		ns = append(ns, add...)
 	}
-	if err := createFromYAML(ns, r); err != nil {
+	if err := createFromYAML(ns, r, ""); err != nil {
 		log.Info("Cannot reconcile specialresource namespace, something went horribly wrong")
 		exitOnError(err)
 	}
@@ -229,9 +235,8 @@ func templateRuntimeInformation(yamlSpec *[]byte, r runtimeInformation) error {
 	return nil
 }
 
-func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource) error {
+func createFromYAML(yamlFile []byte, r *ReconcileSpecialResource, namespace string) error {
 
-	namespace := r.specialresource.Spec.Metadata.Namespace
 	scanner := yamlutil.NewYAMLScanner(yamlFile)
 
 	for scanner.Scan() {

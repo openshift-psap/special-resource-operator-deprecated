@@ -95,7 +95,7 @@ data:
 
     UNAME=$(uname -r)
     SCRIPT_NAME=install-dependencies.sh
-    TAG={{.SpecialResource.Namespace}}/{{.SpecialResource.Name}}:v${UNAME}
+    TAG={{.SpecialResource.Spec.Metadata.Namespace}}/{{.SpecialResource.Name}}:v${UNAME}
 
    
     # --------- Container instructions START ----------------------------------

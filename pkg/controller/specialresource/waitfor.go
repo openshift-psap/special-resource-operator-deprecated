@@ -150,7 +150,7 @@ func waitForBuild(obj *unstructured.Unstructured, r *ReconcileSpecialResource) e
 	builds.SetKind("build")
 
 	opts := &client.ListOptions{}
-	opts.InNamespace(r.specialresource.Namespace)
+	opts.InNamespace(r.specialresource.Spec.Metadata.Namespace)
 
 	if err := r.client.List(context.TODO(), opts, builds); err != nil {
 		return errs.Wrap(err, "Could not get BuildList")
@@ -224,7 +224,7 @@ func waitForDaemonSetLogs(obj *unstructured.Unstructured, r *ReconcileSpecialRes
 	label["app"] = selector
 
 	opts := &client.ListOptions{}
-	opts.InNamespace(r.specialresource.Namespace)
+	opts.InNamespace(r.specialresource.Spec.Metadata.Namespace)
 	opts.MatchingLabels(label)
 
 	err := r.client.List(context.TODO(), opts, pods)
@@ -258,7 +258,7 @@ func waitForDaemonSetLogs(obj *unstructured.Unstructured, r *ReconcileSpecialRes
 		log.Info("waitForDaemonSetLogs", "LastBytes", lastBytes)
 
 		if match, _ := regexp.MatchString(pattern, lastBytes); !match {
-			return errs.New("Not yet done. Not matched against \\+ wait \\d+ ")
+			return errs.New("Not yet done. Not matched against: " + pattern)
 		}
 		// We're only checking one Pod not all of them
 		break

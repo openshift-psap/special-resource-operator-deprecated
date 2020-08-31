@@ -2,7 +2,7 @@ apiVersion: sro.openshift.io/v1alpha1
 kind: SpecialResource
 metadata:
   name: nvidia-gpu
-  namespace: openshift-sro
+  namespace: default
 spec:
   driverContainer:
     source:
@@ -14,4 +14,6 @@ spec:
       value: "440.64.00"
   node:
     selector: "feature.node.kubernetes.io/pci-10de.present"
+  dependsOn: 
+  - name: "driver-container-base"
     
