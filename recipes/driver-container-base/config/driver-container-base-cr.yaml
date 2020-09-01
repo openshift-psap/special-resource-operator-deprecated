@@ -2,7 +2,7 @@ apiVersion: sro.openshift.io/v1alpha1
 kind: SpecialResource
 metadata:
   name: driver-container-base
-  namespace: default
+  namespace: driver-container-base
 spec:
   metadata:
     namespace: driver-container-base
