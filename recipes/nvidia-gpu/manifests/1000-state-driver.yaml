@@ -40,17 +40,18 @@ data:
     #!/bin/bash -x
 
     # Enable EUS and try to install kernel-devel and kernel-headers 
+    echo "Enable EUS and install kernel-devel kernel-headers  kernel-core rpms"
     dnf -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever=8.2 install \ 
     kernel-devel-$(uname -r) kernel-headers-$(uname -r) kernel-core-$(uname -r)
 
     # If EUS fails get kernel-devel and kernel-headers from machine-os-content
     if [ $? -eq 0 ]; then
-      echo "EUS - kernel-devel-$(uname -r) kernel-headers-$(uname -r)  kernel-core-$(uname -r) installed"
+      echo "EUS - kernel-devel kernel-headers  kernel-core installed"
     else
-      echo "EUS FAILED - installing from payload"
-      KERNEL_DEVEL=$(find /tmp/overlay -name kernel-devel-$(uname -r).rpm -exec ls {} \; | tail)
-      KERNEL_HEADERS=$(find /tmp/overlay -name kernel-headers-$(uname -r).rpm -exec ls {} \; | tail)
-      KERNEL_CORE=$(find /tmp/overlay -name kernel-core-$(uname -r).rpm -exec ls {} \; | tail)
+      echo "EUS FAILED - installing from host payload"
+      KERNEL_DEVEL=$(find /tmp/overlay -name kernel-devel-$(uname -r).rpm -exec ls {} \; | tail -1)
+      KERNEL_HEADERS=$(find /tmp/overlay -name kernel-headers-$(uname -r).rpm -exec ls {} \; | tail -1)
+      KERNEL_CORE=$(find /tmp/overlay -name kernel-core-$(uname -r).rpm -exec ls {} \; | tail -1)
 
       dnf -y install $KERNEL_DEVEL
       dnf -y install $KERNEL_HEADERS
