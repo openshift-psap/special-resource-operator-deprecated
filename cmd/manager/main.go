@@ -118,7 +118,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := specialresource.AddConfiglient(cfg); err != nil {
+	if err := specialresource.AddConfigClient(cfg); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}

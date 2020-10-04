@@ -22,7 +22,7 @@ func AddKubeClient(cfg *rest.Config) error {
 	return nil
 }
 
-func AddConfiglient(cfg *rest.Config) error {
+func AddConfigClient(cfg *rest.Config) error {
 	clientSet, err := configv1.NewForConfig(cfg)
 	if err != nil {
 		return err
