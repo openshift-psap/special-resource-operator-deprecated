@@ -1,0 +1,7 @@
+domain: openshift.io
+layout: go.kubebuilder.io/v2
+projectName: special-resource-operator
+repo: github.com/openshift-psap/special-resource-operator
+version: 3-alpha
+plugins:
+  go.sdk.operatorframework.io/v2-alpha: {}
