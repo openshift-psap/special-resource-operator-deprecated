@@ -1,3 +1,9 @@
+REGISTRY         ?= quay.io
+ORG              ?= openshift-psap
+TAG              ?= $(shell git branch | grep \* | cut -d ' ' -f2)
+IMAGE            ?= $(REGISTRY)/$(ORG)/special-resource-operator:$(TAG)
+
+
 # Current Operator version
 VERSION ?= 0.0.1
 # Default bundle image tag
@@ -12,7 +18,7 @@ endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= $(IMAGE)
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -26,16 +32,18 @@ endif
 all: manager
 
 # Run tests
+
 test: generate fmt vet manifests
-	go test ./... -coverprofile cover.out
+	#go test -mod=vendor ./... -coverprofile cover.out
+	@echo "##################### TODO IMPLEMENT TEST ####################"
 
 # Build manager binary
 manager: generate fmt vet
-	go build -o bin/manager main.go
+	go build -mod=vendor -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests
-	go run ./main.go
+	go run -mod=vendor ./main.go
 
 # Install CRDs into a cluster
 install: manifests kustomize
@@ -56,23 +64,23 @@ manifests: controller-gen
 
 # Run go fmt against code
 fmt:
-	go fmt ./...
+	go fmt -mod=vendor ./...
 
 # Run go vet against code
 vet:
-	go vet ./...
+	go vet -mod=vendor ./...
 
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # Build the docker image
-docker-build: test
-	docker build . -t ${IMG}
+podman-build: test
+	podman build . -t ${IMG}
 
 # Push the docker image
-docker-push:
-	docker push ${IMG}
+podman-push:
+	podman push ${IMG}
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -117,4 +125,4 @@ bundle: manifests
 # Build the bundle image.
 .PHONY: bundle-build
 bundle-build:
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+	podman build -f bundle.Dockerfile -t $(BUNDLE_IMG) .

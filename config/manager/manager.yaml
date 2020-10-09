@@ -23,10 +23,13 @@ spec:
         control-plane: controller-manager
     spec:
       containers:
-      - command:
+      - imagePullPolicy: Always # TODO 
+        command:
         - /manager
         args:
-        - --enable-leader-election
+        - "--enable-leader-election"
+        - "--zap-encoder=console"
+        - "--zap-log-level=debug"
         image: controller:latest
         name: manager
         resources:

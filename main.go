@@ -26,6 +26,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	srov1beta1 "github.com/openshift-psap/special-resource-operator/api/v1beta1"
+	"github.com/openshift-psap/special-resource-operator/controllers"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -35,8 +38,14 @@ var (
 )
 
 func init() {
+
+	controllers.Add3dpartyResourcesToScheme(scheme)
+	controllers.AddConfigClient(ctrl.GetConfigOrDie())
+	controllers.AddKubeClient(ctrl.GetConfigOrDie())
+
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
+	utilruntime.Must(srov1beta1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -63,6 +72,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = (&controllers.SpecialResourceReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("SpecialResource"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SpecialResource")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
