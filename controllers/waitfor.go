@@ -26,7 +26,6 @@ func init() {
 	waitFor["Pod"] = waitForPod
 	waitFor["DaemonSet"] = waitForDaemonSet
 	waitFor["BuildConfig"] = waitForBuild
-
 }
 
 type statusCallback func(obj *unstructured.Unstructured) bool

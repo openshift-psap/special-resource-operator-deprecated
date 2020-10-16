@@ -1,7 +1,13 @@
+SPECIALRESOURCE  ?= driver-container-base
+NAMESPACE        ?= openshift-sro
+PULLPOLICY       ?= IfNotPresent
 REGISTRY         ?= quay.io
 ORG              ?= openshift-psap
 TAG              ?= $(shell git branch | grep \* | cut -d ' ' -f2)
 IMAGE            ?= $(REGISTRY)/$(ORG)/special-resource-operator:$(TAG)
+
+include config/recipes/Makefile
+#specialresource: $(SPECIALRESOURCE) 
 
 
 # Current Operator version
@@ -29,7 +35,8 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-all: manager
+# GENERATED all: manager
+all: $(SPECIALRESOURCE)
 
 # Run tests
 
@@ -55,8 +62,16 @@ uninstall: manifests kustomize
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
+	# TODO kustomize cannot set name of namespace according to settings, hack TODO
+	cd config/namespace && sed -i 's/name: .*/name: ${NAMESPACE}/g' namespace.yaml
+	cd config/namespace && $(KUSTOMIZE) edit set namespace ${NAMESPACE}
+	#cd config/default && $(KUSTOMIZE) edit set namespace ${NAMESPACE}
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	$(KUSTOMIZE) build config/namespace | kubectl apply -f -
+
+undeploy: kustomize
+	$(KUSTOMIZE) build config/default | kubectl delete -f -
+
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen

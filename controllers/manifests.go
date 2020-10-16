@@ -12,14 +12,15 @@ type assetsFromFile struct {
 	content []byte
 }
 
-func getAssetsFrom(asset string) []assetsFromFile {
+func getAssetsFrom(assets string) []assetsFromFile {
 
 	manifests := []assetsFromFile{}
-	files, err := filePathWalkDir(asset, ".yaml")
+	files, err := filePathWalkDir(assets, ".yaml")
 	if err != nil {
 		panic(err)
 	}
 	for _, file := range files {
+
 		buffer, err := ioutil.ReadFile(file)
 		if err != nil {
 			panic(err)
@@ -32,12 +33,27 @@ func getAssetsFrom(asset string) []assetsFromFile {
 func filePathWalkDir(root string, ext string) ([]string, error) {
 	var files []string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+
+		log.Info("WalkDir", "path", path)
+
 		if info.IsDir() {
+			log.Info("WalkDir", "path IsDir", path)
+			// Ignore root directory but skipdir any subdirectories
+			if path == root {
+				return nil
+			}
+			return filepath.SkipDir
+		}
+		if filepath.Ext(path) != ext {
+			log.Info("WalkDir", "path not *.yaml", path)
 			return nil
 		}
-		if filepath.Ext(path) == ext {
-			files = append(files, path)
+		if result, _ := filepath.Match("[0-9][0-9][0-9][0-9]-*.yaml", filepath.Base(path)); !result {
+			log.Info("WalkDir", "path no 0000-", path)
+			return nil
 		}
+		log.Info("WalkDir", "path valid", path)
+		files = append(files, path)
 		return nil
 	})
 	return files, err

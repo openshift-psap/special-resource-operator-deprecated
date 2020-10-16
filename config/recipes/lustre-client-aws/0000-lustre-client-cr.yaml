@@ -1,0 +1,17 @@
+apiVersion: sro.openshift.io/v1beta1
+kind: SpecialResource
+metadata:
+  name: lustre-client
+spec: 
+  driverContainer:
+    source:
+      git:
+        ref: "master"
+        uri: "https://github.com/dagrayvid/driver-containers.git"
+    buildArgs:
+    - name: "KVER"
+      value: "{{.KernelVersion}}"
+
+  dependsOn: 
+  - name: "driver-container-base"
+    imageReference: "true"

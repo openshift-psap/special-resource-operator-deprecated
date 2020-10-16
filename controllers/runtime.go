@@ -96,21 +96,27 @@ func logRuntimeInformation() {
 func getRuntimeInformation(r *SpecialResourceReconciler) {
 
 	var err error
+	log.Info("Get Operating System")
 	runInfo.OperatingSystemMajor, runInfo.OperatingSystemMajorMinor, runInfo.OperatingSystemDecimal, err = getOperatingSystem()
 	exitOnError(errs.Wrap(err, "Failed to get operating system"))
 
+	log.Info("Get Kernel Version")
 	runInfo.KernelVersion, err = getKernelVersion()
 	exitOnError(errs.Wrap(err, "Failed to get kernel version"))
 
+	log.Info("Get Cluster Version")
 	runInfo.ClusterVersion, err = getClusterVersion()
 	exitOnError(errs.Wrap(err, "Failed to get cluster version"))
 
+	log.Info("Get Push Secret Name")
 	runInfo.PushSecretName, err = getPushSecretName(r)
 	exitOnError(errs.Wrap(err, "Failed to get push secret name"))
 
+	log.Info("Get OS Image URL")
 	runInfo.OSImageURL, err = getOSImageURL(r)
 	exitOnError(errs.Wrap(err, "Failed to get OSImageURL"))
 
+	log.Info("Get Proxy Configuration")
 	runInfo.Proxy, err = getProxyConfiguration(r)
 	exitOnError(errs.Wrap(err, "Failed to get Proxy Configuration"))
 
@@ -230,6 +236,7 @@ func getPushSecretName(r *SpecialResourceReconciler) (string, error) {
 	secrets.SetAPIVersion("v1")
 	secrets.SetKind("SecretList")
 
+	log.Info("Getting SecretList")
 	opts := []client.ListOption{
 		client.InNamespace(r.specialresource.Spec.Metadata.Namespace),
 	}
@@ -238,15 +245,17 @@ func getPushSecretName(r *SpecialResourceReconciler) (string, error) {
 		return "", errors.Wrap(err, "Client cannot get SecretList")
 	}
 
+	log.Info("Searching for builder-dockercfg Secret")
 	for _, secret := range secrets.Items {
 		secretName := secret.GetName()
 
 		if strings.Contains(secretName, "builder-dockercfg") {
+			log.Info("Found", "Secret", secretName)
 			return secretName, nil
 		}
 	}
 
-	return "", errors.Wrap(err, "Cannot find Secret builder-dockercfg")
+	return "", errors.New("Cannot find Secret builder-dockercfg")
 }
 
 func getOSImageURL(r *SpecialResourceReconciler) (string, error) {

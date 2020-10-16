@@ -24,6 +24,11 @@ spec:
     spec:
       containers:
       - imagePullPolicy: Always # TODO 
+        env:
+          - name: OPERATOR_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
         command:
         - /manager
         args:
@@ -32,11 +37,11 @@ spec:
         - "--zap-log-level=debug"
         image: controller:latest
         name: manager
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
+#        resources:
+#          limits:
+#            cpu: 200m
+#            memory: 60Mi
+#          requests:
+#            cpu: 200m
+#            memory: 40Mi
       terminationGracePeriodSeconds: 10

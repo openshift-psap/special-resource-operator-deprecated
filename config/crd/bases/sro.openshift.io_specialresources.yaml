@@ -14,7 +14,7 @@ spec:
     listKind: SpecialResourceList
     plural: specialresources
     singular: specialresource
-  scope: Namespaced
+  scope: Cluster
   subresources:
     status: {}
   validation:
@@ -41,13 +41,13 @@ spec:
                 description: SpecialResourceDependency is a SpecialResource that needs
                   to be Complete
                 properties:
+                  imageReference:
+                    type: string
                   name:
                     type: string
-                  namespace:
-                    type: string
                 required:
+                - imageReference
                 - name
-                - namespace
                 type: object
               type: array
             driverContainer:
@@ -171,15 +171,6 @@ spec:
                   type: object
               type: object
             metadata:
-              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                Important: Run "operator-sdk generate k8s" to regenerate code after
-                modifying this file Add custom validation using kubebuilder tags:
-                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
-              properties:
-                namespace:
-                  type: string
-              required:
-              - namespace
               type: object
             node:
               description: SpecialResourceNode defines the observed state of SpecialResource
@@ -194,10 +185,6 @@ spec:
           description: SpecialResourceStatus defines the observed state of SpecialResource
           properties:
             state:
-              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                of cluster Important: Run "operator-sdk generate k8s" to regenerate
-                code after modifying this file Add custom validation using kubebuilder
-                tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
               type: string
           required:
           - state

@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"sort"
 
+	"github.com/go-logr/logr"
 	"github.com/openshift-psap/special-resource-operator/yamlutil"
 	buildV1 "github.com/openshift/api/build/v1"
 	imageV1 "github.com/openshift/api/image/v1"
@@ -86,7 +87,7 @@ func cacheNodes(r *SpecialResourceReconciler, force bool) (*unstructured.Unstruc
 
 func getHardwareConfiguration(r *SpecialResourceReconciler) (*unstructured.Unstructured, error) {
 
-	log.Info("Looking for Hardware Configuration ConfigMap for", "SpecialResource", r.specialresource.GetName())
+	log.Info("Looking for Hardware Configuration ConfigMap for")
 	cm := &unstructured.Unstructured{}
 	cm.SetAPIVersion("v1")
 	cm.SetKind("ConfigMap")
@@ -94,10 +95,8 @@ func getHardwareConfiguration(r *SpecialResourceReconciler) (*unstructured.Unstr
 	namespacedName := types.NamespacedName{Namespace: r.specialresource.Spec.Metadata.Namespace, Name: r.specialresource.Name}
 	err := r.Get(context.TODO(), namespacedName, cm)
 
-	log.Info(err.Error())
-
 	if apierrors.IsNotFound(err) {
-		log.Info("Hardware Configuration ConfigMap not found, creating from local repository (/opt/sro/recipes) for SpecialResource: " + r.specialresource.Name)
+		log.Info("Hardware Configuration ConfigMap not found, creating from local repository (/opt/sro/recipes) for")
 		manifests := "/opt/sro/recipes/" + r.specialresource.Name + "/manifests"
 		return getLocalHardwareConfiguration(manifests, r.specialresource.Name)
 	}
@@ -126,6 +125,112 @@ func getLocalHardwareConfiguration(path string, specialresource string) (*unstru
 
 	return cm, nil
 }
+
+func createImagePullerRoleBinding(r *SpecialResourceReconciler) error {
+
+	log.Info("dep", "ImageReference", r.dependency.ImageReference)
+	log.Info("dep", "Name", r.dependency.Name)
+
+	if r.dependency.ImageReference != "true" {
+		return nil
+	}
+
+	log.Info("Looking for ImageReference RoleBinding")
+	rb := &unstructured.Unstructured{}
+	rb.SetAPIVersion("rbac.authorization.k8s.io/v1")
+	rb.SetKind("RoleBinding")
+
+	namespacedName := types.NamespacedName{Namespace: r.specialresource.Spec.Metadata.Namespace, Name: "system:image-puller"}
+	err := r.Get(context.TODO(), namespacedName, rb)
+
+	newSubject := make(map[string]interface{})
+	newSubjects := make([]interface{}, 0)
+
+	newSubject["kind"] = "ServiceAccount"
+	newSubject["name"] = "builder"
+	newSubject["namespace"] = r.parent.Spec.Metadata.Namespace
+
+	if apierrors.IsNotFound(err) {
+
+		log.Info("ImageReference RoleBinding not found, creating")
+		rb.SetName("system:image-puller")
+		rb.SetNamespace(r.specialresource.Spec.Metadata.Namespace)
+		err := unstructured.SetNestedField(rb.Object, "rbac.authorization.k8s.io", "roleRef", "apiGroup")
+		exitOnError(err)
+		err = unstructured.SetNestedField(rb.Object, "ClusterRole", "roleRef", "kind")
+		exitOnError(err)
+		err = unstructured.SetNestedField(rb.Object, "system:image-puller", "roleRef", "name")
+		exitOnError(err)
+
+		newSubjects = append(newSubjects, newSubject)
+
+		unstructured.SetNestedSlice(rb.Object, newSubjects, "subjects")
+		exitOnError(err)
+
+		if err := r.Create(context.TODO(), rb); err != nil {
+			return errs.Wrap(err, "Couldn't Create Resource")
+		}
+
+		return nil
+	}
+
+	if apierrors.IsForbidden(err) {
+		return errs.Wrap(err, "Forbidden check Role, ClusterRole and Bindings for operator")
+	}
+
+	if err != nil {
+		return errs.Wrap(err, "Unexpected error")
+	}
+
+	log.Info("ImageReference RoleBinding found, updating")
+
+	oldSubjects, _, err := unstructured.NestedSlice(rb.Object, "subjects")
+	exitOnError(err)
+
+	for _, subject := range oldSubjects {
+		switch subject := subject.(type) {
+		case map[string]interface{}:
+			namespace, _, err := unstructured.NestedString(subject, "namespace")
+			exitOnError(err)
+
+			log.Info("ImageReference", "namespace", namespace)
+			log.Info("ImageReference", "r.namespace", r.specialresource.Spec.Metadata.Namespace)
+
+			if namespace == r.specialresource.Spec.Metadata.Namespace {
+				log.Info("ImageReference ServiceAccount found, returning")
+				return nil
+			}
+		default:
+			log.Info("subject", "DEFAULT NOT THE CORRECT TYPE", subject)
+		}
+	}
+
+	oldSubjects = append(oldSubjects, newSubject)
+
+	unstructured.SetNestedSlice(rb.Object, oldSubjects, "subjects")
+	exitOnError(err)
+
+	if err := r.Update(context.TODO(), rb); err != nil {
+		return errs.Wrap(err, "Couldn't Update Resource")
+	}
+
+	return nil
+}
+
+/* apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: system:image-puller
+  namespace: driver-container-base
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:image-puller
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: simple-kmod
+*/
 
 // ReconcileHardwareStates Reconcile Hardware States
 func ReconcileHardwareStates(r *SpecialResourceReconciler, config unstructured.Unstructured) error {
@@ -156,17 +261,40 @@ func ReconcileHardwareStates(r *SpecialResourceReconciler, config unstructured.U
 	return nil
 }
 
+func createSpecialResourceNamespace(r *SpecialResourceReconciler) {
+
+	ns := []byte("apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ")
+
+	if r.specialresource.Spec.Metadata.Namespace != "" {
+		add := []byte(r.specialresource.Spec.Metadata.Namespace)
+		ns = append(ns, add...)
+	} else {
+		r.specialresource.Spec.Metadata.Namespace = r.specialresource.Name
+		add := []byte(r.specialresource.Spec.Metadata.Namespace)
+		ns = append(ns, add...)
+	}
+
+	log.Info("Create", "Namespace", ns)
+
+	if err := createFromYAML(ns, r, ""); err != nil {
+		log.Info("Cannot reconcile specialresource namespace, something went horribly wrong")
+		exitOnError(err)
+	}
+}
+
 // ReconcileHardwareConfigurations Reconcile Hardware Configurations
 func ReconcileHardwareConfigurations(r *SpecialResourceReconciler) error {
 
 	var err error
 	var config *unstructured.Unstructured
-
 	// Leave this here, this is crucial for all following work
 	// Creating and setting the working namespace for the specialresource
 	// specialresource name == namespace if not metadata.namespace is set
-	log.Info("Creating Namespace")
 	createSpecialResourceNamespace(r)
+	if err := createImagePullerRoleBinding(r); err != nil {
+		return errs.Wrap(err, "Could not create ImagePuller RoleBinding ")
+
+	}
 
 	// Check if we have a ConfigMap deployed in the specialresrouce
 	// namespace if not fallback to the local repository.
@@ -190,24 +318,6 @@ func ReconcileHardwareConfigurations(r *SpecialResourceReconciler) error {
 	}
 
 	return nil
-}
-
-func createSpecialResourceNamespace(r *SpecialResourceReconciler) {
-
-	ns := []byte("apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ")
-
-	if r.specialresource.Spec.Metadata.Namespace != "" {
-		add := []byte(r.specialresource.Spec.Metadata.Namespace)
-		ns = append(ns, add...)
-	} else {
-		r.specialresource.Spec.Metadata.Namespace = r.specialresource.Name
-		add := []byte(r.specialresource.Spec.Metadata.Namespace)
-		ns = append(ns, add...)
-	}
-	if err := createFromYAML(ns, r, ""); err != nil {
-		log.Info("Cannot reconcile specialresource namespace, something went horribly wrong")
-		exitOnError(err)
-	}
 }
 
 func templateRuntimeInformation(yamlSpec *[]byte, r runtimeInformation) error {
@@ -251,7 +361,9 @@ func createFromYAML(yamlFile []byte, r *SpecialResourceReconciler, namespace str
 		err = obj.UnmarshalJSON(jsonSpec)
 		exitOnError(errs.Wrap(err, "Cannot unmarshall json spec, check your manifests"))
 
-		obj.SetNamespace(namespace)
+		if resourceNamespaced(obj.GetKind()) {
+			obj.SetNamespace(namespace)
+		}
 
 		// We are only building a driver-container if we cannot pull the image
 		// We are asuming that vendors provide pre compiled DriverContainers
@@ -322,13 +434,31 @@ func updateResourceVersion(req *unstructured.Unstructured, found *unstructured.U
 	return nil
 }
 
+func resourceNamespaced(kind string) bool {
+	if kind == "Namespace" ||
+		kind == "ClusterRole" ||
+		kind == "ClusterRoleBinding" ||
+		kind == "SecurityContextConstraint" ||
+		kind == "SpecialResource" {
+		return false
+	}
+	return true
+}
+
 // CRUD Create Update Delete Resource
 func CRUD(obj *unstructured.Unstructured, r *SpecialResourceReconciler) error {
 
-	logger := log.WithValues("Kind", obj.GetKind(), "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+	var logger logr.Logger
+	if resourceNamespaced(obj.GetKind()) {
+		logger = log.WithValues("Kind", obj.GetKind(), "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+	} else {
+		logger = log.WithValues("Kind", obj.GetKind(), "Name", obj.GetName())
+	}
+
 	found := obj.DeepCopy()
 
-	if obj.GetKind() != "Namespace" {
+	// SpecialResource is the parent, all other objects are childs and need a reference
+	if obj.GetKind() != "SpecialResource" {
 		if err := controllerutil.SetControllerReference(&r.specialresource, obj, r.Scheme); err != nil {
 			return errs.Wrap(err, "Failed to set controller reference")
 		}

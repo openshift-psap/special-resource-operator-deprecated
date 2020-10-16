@@ -38,11 +38,12 @@ type SpecialResourceReconciler struct {
 	Log             logr.Logger
 	Scheme          *runtime.Scheme
 	specialresource srov1beta1.SpecialResource
+	parent          srov1beta1.SpecialResource
+	dependency      srov1beta1.SpecialResourceDependency
 }
 
 func (r *SpecialResourceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	log = r.Log.WithValues("specialresource", req.NamespacedName)
-	return SpecialResourceReconcilers(r, req)
+	return ReconcilerSpecialResources(r, req)
 }
 
 func (r *SpecialResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {

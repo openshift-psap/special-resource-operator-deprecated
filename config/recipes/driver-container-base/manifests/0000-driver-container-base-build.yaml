@@ -125,6 +125,39 @@ data:
     # --------- Container instructions END ------------------------------------
 ---
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
+rules:
+- apiGroups:
+  - security.openshift.io
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
+  resourceNames:
+  - hostaccess
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
+subjects:
+- kind: ServiceAccount
+  name: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
+userNames:
+- system:serviceaccount:{{.SpecialResource.Spec.Metadata.Namespace}}:{{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}
+---
+apiVersion: v1
 kind: Pod
 metadata:
   annotations: 
@@ -133,13 +166,15 @@ metadata:
     app: {{.SpecialResource.Name}}
   name: {{.SpecialResource.Name}}
 spec:
-  serviceAccount: builder
-  serviceAccountName: builder
+  #serviceAccount: builder
+  #serviceAccountName: builder
+  serviceAccount: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
+  serviceAccountName: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
   restartPolicy: OnFailure
   containers:
   - name: {{.SpecialResource.Name}}-ctr
-    image: "registry.access.redhat.com/ubi8:latest"
-    command: ["/bin/entrypoint.sh"]
+    image: registry.access.redhat.com/ubi8:latest
+    command: [/bin/entrypoint.sh]
     securityContext:
       seLinuxOptions:
         type: spc_t

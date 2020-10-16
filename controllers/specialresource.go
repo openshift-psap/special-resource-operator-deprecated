@@ -7,8 +7,6 @@ import (
 	srov1beta1 "github.com/openshift-psap/special-resource-operator/api/v1beta1"
 	errs "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -22,21 +20,26 @@ import (
 // +kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=config.openshift.io,resources=clusterversions,verbs=get
 // +kubebuilder:rbac:groups=config.openshift.io,resources=proxies,verbs=get;list
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list
-
+// +kubebuilder:rbac:groups=security.openshift.io,resources=securitycontextconstraints,verbs=use;get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=image.openshift.io,resources=imagestreams,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=image.openshift.io,resources=imagestreams/finalizers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=image.openshift.io,resources=imagestreams/layers,verbs=get
+// +kubebuilder:rbac:groups=core,resources=imagestreams/layers,verbs=get
+// +kubebuilder:rbac:groups=build.openshift.io,resources=buildconfigs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=build.openshift.io,resources=builds,verbs=get;list;watch;create;update;patch;delete
 
-func SpecialResourceReconcilers(r *SpecialResourceReconciler, req ctrl.Request) (ctrl.Result, error) {
+func ReconcilerSpecialResources(r *SpecialResourceReconciler, req ctrl.Request) (ctrl.Result, error) {
 
-	log.Info("Reconciling SpecialResource(s) in all Namespaces")
+	r.Log.Info("Reconciling SpecialResource(s) in all Namespaces")
+
 	specialresources := &srov1beta1.SpecialResourceList{}
-
-	opts := []client.ListOption{
-		client.InNamespace(req.NamespacedName.Namespace),
-	}
+	opts := []client.ListOption{}
 	err := r.List(context.TODO(), specialresources, opts...)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -49,24 +52,25 @@ func SpecialResourceReconcilers(r *SpecialResourceReconciler, req ctrl.Request) 
 		return reconcile.Result{}, err
 	}
 
-	for _, specialresource := range specialresources.Items {
+	for _, r.parent = range specialresources.Items {
 
-		//namespacedName := types.NamespacedName{Namespace: specialresource.Spec.Metadata.Namespace, Name: specialresource.Name}
-		//log = r.Log.WithValues("specialresource", namespacedName)
+		log = r.Log.WithValues("specialresource", r.parent.Name)
 		log.Info("Reconciling Dependencies of")
 
 		// Only one level dependency support for now
-		for _, dependency := range specialresource.Spec.DependsOn {
+		for _, r.dependency = range r.parent.Spec.DependsOn {
 
-			//namespacedName := types.NamespacedName{Namespace: dependency.Namespace, Name: dependency.Name}
-			//log = r.Log.WithValues("specialresource", namespacedName)
-			log.Info("Fetching Dependency")
+			log = r.Log.WithValues("specialresource", r.dependency.Name)
+			log.Info("Getting Dependency")
 
-			if r.specialresource, err = getSpecialResourceFrom(dependency, r); err != nil {
+			// Assign the specialresource to the reconciler object
+			if r.specialresource, err = getDependencyFrom(specialresources, r.dependency.Name); err != nil {
 				log.Info("Could not get SpecialResource dependency", "error", fmt.Sprintf("%v", err))
-				if r.specialresource, err = createSpecialResourceFrom(dependency, r); err != nil {
+				if r.specialresource, err = createSpecialResourceFrom(r, r.dependency.Name); err != nil {
 					return reconcile.Result{}, errs.New("Dependency creation failed")
 				}
+				// We need to fetch the newly created SpecialResources, reconciling
+				return reconcile.Result{}, nil
 			}
 
 			log.Info("Reconciling Dependency")
@@ -78,9 +82,10 @@ func SpecialResourceReconcilers(r *SpecialResourceReconciler, req ctrl.Request) 
 			}
 		}
 
+		log = r.Log.WithValues("specialresource", r.parent.Name)
 		log.Info("Reconciling")
 
-		r.specialresource = specialresource
+		r.specialresource = r.parent
 		if err := ReconcileHardwareConfigurations(r); err != nil {
 			// We do not want a stacktrace here, errs.Wrap already created
 			// breadcrumb of errors to follow. Just sprintf with %v rather than %+v
@@ -94,54 +99,42 @@ func SpecialResourceReconcilers(r *SpecialResourceReconciler, req ctrl.Request) 
 
 }
 
-func getSpecialResourceFrom(dependency srov1beta1.SpecialResourceDependency, r *SpecialResourceReconciler) (srov1beta1.SpecialResource, error) {
+func getDependencyFrom(specialresources *srov1beta1.SpecialResourceList, name string) (srov1beta1.SpecialResource, error) {
 
-	// Fetch the SpecialResource instance
-	specialresource := srov1beta1.SpecialResource{}
+	log.Info("Looking for")
 
-	log.Info("Looking for SpecialResource", "Name", dependency.Name, "Namespace", dependency.Namespace)
-
-	namespacedName := types.NamespacedName{Namespace: dependency.Namespace, Name: dependency.Name}
-	err := r.Get(context.TODO(), namespacedName, &specialresource)
-
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			return specialresource, errs.Wrap(err, "Is not found Error")
+	for _, specialresource := range specialresources.Items {
+		if specialresource.Name == name {
+			return specialresource, nil
 		}
-		if apierrors.IsForbidden(err) {
-			return specialresource, errs.Wrap(err, "Forbidden check Role, ClusterRole and Bindings for operator")
-		}
-
-		// Error reading the object
-		return specialresource, errs.Wrap(err, "Unexpected error")
 	}
 
-	return specialresource, nil
+	return srov1beta1.SpecialResource{}, errs.New("Not found")
 }
 
-func createSpecialResourceFrom(dependency srov1beta1.SpecialResourceDependency, r *SpecialResourceReconciler) (srov1beta1.SpecialResource, error) {
+func createSpecialResourceFrom(r *SpecialResourceReconciler, name string) (srov1beta1.SpecialResource, error) {
 
 	specialresource := srov1beta1.SpecialResource{}
 
-	crpath := "/opt/sro/recipes/" + dependency.Name + "/config"
+	crpath := "/opt/sro/recipes/" + name
 	manifests := getAssetsFrom(crpath)
 
-	for _, manifest := range manifests {
-		log.Info("TODO", "Creation of SpecialResource, please do it manually", manifest.name)
-		/*
-			log.Info("Creating", "SpecialResource", manifest.name)
-
-			if err := createFromYAML(manifest.content, r, r.specialresource.Namespace); err != nil {
-				log.Info("Cannot reconcile specialresource namespace, something went horribly wrong")
-				exitOnError(err)
-			}
-			// Only one CR creation if they are more ignore all others
-			// makes no sense to create multiple CRs for the same specialresource
-			break
-		*/
+	if len(manifests) == 0 {
+		exitOnError(errs.New("Could not read CR " + name + "from lokal path"))
 	}
 
-	return specialresource, nil
+	for _, manifest := range manifests {
+
+		log.Info("Creating", "manifest", manifest.name)
+
+		if err := createFromYAML(manifest.content, r, r.specialresource.Spec.Metadata.Namespace); err != nil {
+			log.Info("Cannot create, something went horribly wrong")
+			exitOnError(err)
+		}
+		// Only one CR creation if they are more ignore all others
+		// makes no sense to create multiple CRs for the same specialresource
+		break
+	}
+
+	return specialresource, errs.New("Created new SpecialResource we need to Reconcile")
 }

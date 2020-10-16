@@ -89,21 +89,13 @@ type SpecialResourceDriverContainer struct {
 
 // SpecialResourceDependency is a SpecialResource that needs to be Complete
 type SpecialResourceDependency struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
-}
-
-// SpecialResourceMetadata is metadata associated with a SpecialResource
-type SpecialResourceMetadata struct {
-	Namespace string `json:"namespace"`
+	Name           string `json:"name"`
+	ImageReference string `json:"imageReference"`
 }
 
 // SpecialResourceSpec defines the desired state of SpecialResource
 type SpecialResourceSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	Metadata        SpecialResourceMetadata        `json:"metadata,omitempty"`
+	Metadata        metav1.ObjectMeta              `json:"metadata,omitempty"`
 	DriverContainer SpecialResourceDriverContainer `json:"driverContainer,omitempty"`
 	Node            SpecialResourceNode            `json:"node,omitempty"`
 	DependsOn       []SpecialResourceDependency    `json:"dependsOn,omitempty"`
@@ -111,9 +103,6 @@ type SpecialResourceSpec struct {
 
 // SpecialResourceStatus defines the observed state of SpecialResource
 type SpecialResourceStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	State string `json:"state"`
 }
 
@@ -121,6 +110,7 @@ type SpecialResourceStatus struct {
 // +kubebuilder:subresource:status
 
 // SpecialResource is the Schema for the specialresources API
+// +kubebuilder:resource:path=specialresources,scope=Cluster
 type SpecialResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

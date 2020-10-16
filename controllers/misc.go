@@ -50,3 +50,13 @@ func exitOnError(err error) {
 		os.Exit(1)
 	}
 }
+
+func operatorNamespace() string {
+	namespace := os.Getenv("OPERATOR_NAMESPACE")
+
+	if len(namespace) > 0 {
+		return namespace
+	}
+
+	return "0xDEADBEEF"
+}
