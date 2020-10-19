@@ -73,6 +73,10 @@ spec:
 
   strategy:
     dockerStrategy:
+      from:
+        kind: "ImageStreamTag"
+        name: "driver-container-base:v{{.KernelVersion}}"
+        namespace: "driver-container-base"
       buildArgs: 
         {{ range .SpecialResource.Spec.DriverContainer.BuildArgs }}
         - name: {{.Name}}

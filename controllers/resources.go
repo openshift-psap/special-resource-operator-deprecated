@@ -194,9 +194,9 @@ func createImagePullerRoleBinding(r *SpecialResourceReconciler) error {
 			exitOnError(err)
 
 			log.Info("ImageReference", "namespace", namespace)
-			log.Info("ImageReference", "r.namespace", r.specialresource.Spec.Metadata.Namespace)
+			log.Info("ImageReference", "r.namespace", r.parent.Spec.Metadata.Namespace)
 
-			if namespace == r.specialresource.Spec.Metadata.Namespace {
+			if namespace == r.parent.Spec.Metadata.Namespace {
 				log.Info("ImageReference ServiceAccount found, returning")
 				return nil
 			}
@@ -263,7 +263,12 @@ func ReconcileHardwareStates(r *SpecialResourceReconciler, config unstructured.U
 
 func createSpecialResourceNamespace(r *SpecialResourceReconciler) {
 
-	ns := []byte("apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ")
+	ns := []byte(`apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    specialresource.openshift.io/wait: "true"
+  name: `)
 
 	if r.specialresource.Spec.Metadata.Namespace != "" {
 		add := []byte(r.specialresource.Spec.Metadata.Namespace)
@@ -273,9 +278,6 @@ func createSpecialResourceNamespace(r *SpecialResourceReconciler) {
 		add := []byte(r.specialresource.Spec.Metadata.Namespace)
 		ns = append(ns, add...)
 	}
-
-	log.Info("Create", "Namespace", ns)
-
 	if err := createFromYAML(ns, r, ""); err != nil {
 		log.Info("Cannot reconcile specialresource namespace, something went horribly wrong")
 		exitOnError(err)
@@ -403,7 +405,8 @@ func needToUpdateResourceVersion(kind string) bool {
 		kind == "Route" ||
 		kind == "BuildConfig" ||
 		kind == "ImageStream" ||
-		kind == "PrometheusRule" {
+		kind == "PrometheusRule" ||
+		kind == "CSIDriver" {
 		return true
 	}
 	return false
@@ -450,9 +453,9 @@ func CRUD(obj *unstructured.Unstructured, r *SpecialResourceReconciler) error {
 
 	var logger logr.Logger
 	if resourceNamespaced(obj.GetKind()) {
-		logger = log.WithValues("Kind", obj.GetKind(), "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+		logger = log.WithValues("Kind", obj.GetKind()+": "+obj.GetNamespace()+"/"+obj.GetName())
 	} else {
-		logger = log.WithValues("Kind", obj.GetKind(), "Name", obj.GetName())
+		logger = log.WithValues("Kind", obj.GetKind()+": "+obj.GetName())
 	}
 
 	found := obj.DeepCopy()
@@ -485,8 +488,9 @@ func CRUD(obj *unstructured.Unstructured, r *SpecialResourceReconciler) error {
 	// specific minor fields.
 	//
 	// ServiceAccounts cannot be updated, maybe delete and create?
-	if obj.GetKind() == "ServiceAccount" || obj.GetKind() == "Pod" {
-		logger.Info("TODO: Found, not updating, does not work, why? Secret accumulation?")
+	if obj.GetKind() == "ServiceAccount" || obj.GetKind() == "Pod" || obj.GetKind() == "BuildConfig" {
+		// Not updating BuildConfig since it triggers a new build in 4.6 was not doing that in <4.6
+		//logger.Info("TODO: Found, not updating, does not work, why? Secret accumulation?")
 		return nil
 	}
 

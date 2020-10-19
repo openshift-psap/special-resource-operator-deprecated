@@ -82,7 +82,7 @@ var waitCallback resourceCallbacks
 
 func waitForResource(obj *unstructured.Unstructured, r *SpecialResourceReconciler) error {
 
-	log.Info("waitForResource", "Kind", obj.GetKind())
+	log.Info("WaitForResource", "Kind", obj.GetKind())
 
 	var err error = nil
 	// Wait for general availability, Pods Complete, Running
@@ -186,25 +186,27 @@ func waitForResourceFullAvailability(obj *unstructured.Unstructured, r *SpecialR
 
 	found := obj.DeepCopy()
 
-	err := wait.Poll(retryInterval, timeout, func() (done bool, err error) {
+	if err := wait.Poll(retryInterval, timeout, func() (done bool, err error) {
 		err = r.Get(context.TODO(), types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, found)
 		if err != nil {
 			log.Error(err, "")
 			return false, err
 		}
 		if callback(found) {
-			log.Info("Resource available ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+			log.Info("Resource available ", "Kind", obj.GetKind()+": "+obj.GetNamespace()+"/"+obj.GetName())
 			return true, nil
 		}
-		log.Info("Waiting for availability of ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+		log.Info("Waiting for availability of ", "Kind", obj.GetKind()+": "+obj.GetNamespace()+"/"+obj.GetName())
 		return false, nil
-	})
-	return err
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func waitForDaemonSetLogs(obj *unstructured.Unstructured, r *SpecialResourceReconciler, pattern string) error {
 
-	log.Info("waitForDaemonSetLogs", "Name", obj.GetName())
+	log.Info("WaitForDaemonSetLogs", "Name", obj.GetName())
 
 	pods := &unstructured.UnstructuredList{}
 	pods.SetAPIVersion("v1")
@@ -233,7 +235,7 @@ func waitForDaemonSetLogs(obj *unstructured.Unstructured, r *SpecialResourceReco
 	}
 
 	for _, pod := range pods.Items {
-		log.Info("waitForDaemonSetLogs", "Pod", pod.GetName())
+		log.Info("WaitForDaemonSetLogs", "Pod", pod.GetName())
 		podLogOpts := corev1.PodLogOptions{}
 		req := kubeclient.CoreV1().Pods(pod.GetNamespace()).GetLogs(pod.GetName(), &podLogOpts)
 		podLogs, err := req.Stream(context.TODO())
@@ -255,7 +257,7 @@ func waitForDaemonSetLogs(obj *unstructured.Unstructured, r *SpecialResourceReco
 
 		logs := buf.String()
 		lastBytes := logs[len(logs)-cutoff:]
-		log.Info("waitForDaemonSetLogs", "LastBytes", lastBytes)
+		log.Info("WaitForDaemonSetLogs", "LastBytes", lastBytes)
 
 		if match, _ := regexp.MatchString(pattern, lastBytes); !match {
 			return errs.New("Not yet done. Not matched against: " + pattern)

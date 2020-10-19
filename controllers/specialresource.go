@@ -16,6 +16,7 @@ import (
 // +kubebuilder:rbac:groups=sro.openshift.io,resources=specialresources/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=sro.openshift.io,resources=specialresources/finalizers,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=pods/log,verbs=get
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch;create;update;patch;delete
@@ -33,6 +34,16 @@ import (
 // +kubebuilder:rbac:groups=core,resources=imagestreams/layers,verbs=get
 // +kubebuilder:rbac:groups=build.openshift.io,resources=buildconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=build.openshift.io,resources=builds,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=events,verbs=list;watch;create;update;patch
+// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;update;
+// +kubebuilder:rbac:groups=core,resources=persistentvolumes,verbs=get;list;watch;create;delete
+// +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;delete
+// +kubebuilder:rbac:groups=storage.k8s.io,resources=csinodes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=watch
+// +kubebuilder:rbac:groups=storage.k8s.io,resources=csidrivers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 
 func ReconcilerSpecialResources(r *SpecialResourceReconciler, req ctrl.Request) (ctrl.Result, error) {
 
@@ -67,7 +78,9 @@ func ReconcilerSpecialResources(r *SpecialResourceReconciler, req ctrl.Request) 
 			if r.specialresource, err = getDependencyFrom(specialresources, r.dependency.Name); err != nil {
 				log.Info("Could not get SpecialResource dependency", "error", fmt.Sprintf("%v", err))
 				if r.specialresource, err = createSpecialResourceFrom(r, r.dependency.Name); err != nil {
-					return reconcile.Result{}, errs.New("Dependency creation failed")
+					//return reconcile.Result{}, errs.New("Dependency creation failed")
+					log.Info("Dependency creation failed", "error", fmt.Sprintf("%v", err))
+					return reconcile.Result{Requeue: true}, nil
 				}
 				// We need to fetch the newly created SpecialResources, reconciling
 				return reconcile.Result{}, nil
@@ -78,7 +91,8 @@ func ReconcilerSpecialResources(r *SpecialResourceReconciler, req ctrl.Request) 
 				// We do not want a stacktrace here, errs.Wrap already created
 				// breadcrumb of errors to follow. Just sprintf with %v rather than %+v
 				log.Info("Could not reconcile hardware configurations", "error", fmt.Sprintf("%v", err))
-				return reconcile.Result{}, errs.New("Reconciling failed")
+				//return reconcile.Result{}, errs.New("Reconciling failed")
+				return reconcile.Result{Requeue: true}, nil
 			}
 		}
 
@@ -90,7 +104,8 @@ func ReconcilerSpecialResources(r *SpecialResourceReconciler, req ctrl.Request) 
 			// We do not want a stacktrace here, errs.Wrap already created
 			// breadcrumb of errors to follow. Just sprintf with %v rather than %+v
 			log.Info("Could not reconcile hardware configurations", "error", fmt.Sprintf("%v", err))
-			return reconcile.Result{}, errs.New("Reconciling failed")
+			//return reconcile.Result{}, errs.New("Reconciling failed")
+			return reconcile.Result{Requeue: true}, nil
 		}
 
 	}

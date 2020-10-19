@@ -53,6 +53,7 @@ type runtimeInformation struct {
 	OperatingSystemDecimal    string
 	KernelVersion             string
 	ClusterVersion            string
+	ClusterVersionMajorMinor  string
 	UpdateVendor              string
 	PushSecretName            string
 	OSImageURL                string
@@ -87,6 +88,7 @@ func logRuntimeInformation() {
 	log.Info("Runtime Information", "OperatingSystemDecimal", runInfo.OperatingSystemDecimal)
 	log.Info("Runtime Information", "KernelVersion", runInfo.KernelVersion)
 	log.Info("Runtime Information", "ClusterVersion", runInfo.ClusterVersion)
+	log.Info("Runtime Information", "ClusterVersionMajorMinor", runInfo.ClusterVersionMajorMinor)
 	log.Info("Runtime Information", "UpdateVendor", runInfo.UpdateVendor)
 	log.Info("Runtime Information", "PushSecretName", runInfo.PushSecretName)
 	log.Info("Runtime Information", "OSImageURL", runInfo.OSImageURL)
@@ -105,7 +107,7 @@ func getRuntimeInformation(r *SpecialResourceReconciler) {
 	exitOnError(errs.Wrap(err, "Failed to get kernel version"))
 
 	log.Info("Get Cluster Version")
-	runInfo.ClusterVersion, err = getClusterVersion()
+	runInfo.ClusterVersion, runInfo.ClusterVersionMajorMinor, err = getClusterVersion()
 	exitOnError(errs.Wrap(err, "Failed to get cluster version"))
 
 	log.Info("Get Push Secret Name")
@@ -211,11 +213,11 @@ func getKernelVersion() (string, error) {
 	return kernelVersion, nil
 }
 
-func getClusterVersion() (string, error) {
+func getClusterVersion() (string, string, error) {
 
 	version, err := configclient.ClusterVersions().Get(context.TODO(), "version", metav1.GetOptions{})
 	if err != nil {
-		return "", errs.Wrap(err, "ConfigClient unable to get ClusterVersions")
+		return "", "", errs.Wrap(err, "ConfigClient unable to get ClusterVersions")
 	}
 
 	for _, condition := range version.Status.History {
@@ -223,10 +225,10 @@ func getClusterVersion() (string, error) {
 			continue
 		}
 
-		return condition.Version, nil
+		return condition.Version, condition.Version[0:3], nil
 	}
 
-	return "", errs.New("Undefined Cluster Version")
+	return "", "", errs.New("Undefined Cluster Version")
 }
 
 func getPushSecretName(r *SpecialResourceReconciler) (string, error) {

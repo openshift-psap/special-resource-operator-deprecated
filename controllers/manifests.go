@@ -5,6 +5,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+
+	errs "github.com/pkg/errors"
 )
 
 type assetsFromFile struct {
@@ -31,7 +33,13 @@ func getAssetsFrom(assets string) []assetsFromFile {
 }
 
 func filePathWalkDir(root string, ext string) ([]string, error) {
+
 	var files []string
+
+	if _, err := os.Stat(root); os.IsNotExist(err) {
+		exitOnError(errs.Wrap(err, "Directory does note exists, giving up: "+root))
+	}
+
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 
 		log.Info("WalkDir", "path", path)

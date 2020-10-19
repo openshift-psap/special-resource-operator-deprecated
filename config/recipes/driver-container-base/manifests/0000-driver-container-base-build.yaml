@@ -45,36 +45,61 @@ data:
   install-dependencies.sh: |-
     #!/bin/bash -x
     
+    set -e 
+
     UNAME=$(uname -r)
 
+    echo "Enabling RHOCP and EUS RPM repos..."
+    yum config-manager --set-enabled rhocp-{{.ClusterVersionMajorMinor}}-for-rhel-8-x86_64-rpms 
+    if ! yum update; then 
+      yum config-manager --set-disabled rhocp-{{.ClusterVersionMajorMinor}}-for-rhel-8-x86_64-rpms 
+    fi 
+
+    yum config-manager --set-enabled rhel-8-for-x86_64-baseos-eus-rpms
+    if ! yum update; then 
+      yum config-manager --set-disabled rhel-8-for-x86_64-baseos-eus-rpms
+    fi 
+
     # First update the base container to latest versions of everything
-    yum update -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever={{.OperatingSystemDecimal}}
+    yum update -y --releasever={{.OperatingSystemDecimal}}
 
     # Additional packages that are mandatory for driver-containers
     yum -y --setopt=install_weak_deps=False --best install elfutils-libelf-devel kmod
 
 
-    # Enable EUS and try to install kernel-devel and kernel-headers
-    yum -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever={{.OperatingSystemDecimal}} \
-      --setopt=install_weak_deps=False --best install \
-      kernel-devel-${UNAME} kernel-headers-${UNAME} kernel-core-${UNAME}
-    
-    if [ $? -eq 0 ]; then
-      echo "EUS - kernel-devel-${UNAME} kernel-headers-${UNAME} kernel-core-${UNAME} installed"
+    # Try to enable EUS and try to install kernel-devel and kernel-headers RPMs
+    if yum -y --releasever={{.OperatingSystemDecimal}} --setopt=install_weak_deps=False --best install \
+      kernel-devel-${UNAME} kernel-headers-${UNAME} kernel-core-${UNAME} kernel-modules-${UNAME} \
+      kernel-modules-extra-${UNAME}
+    then
+      echo "EUS - kernel-devel kernel-headers kernel-core kernel-modules kernel-modules-extra installed"
       exit 0
     fi
 
     # If EUS fails get kernel-devel and kernel-headers from machine-os-content
-    echo "EUS FAILED - installing from machine-os-content"
+    echo "EUS and/or rhocp-{{.ClusterVersionMajorMinor}} FAILED - installing from machine-os-content"
 
     KERNEL_DEVEL=$(find /extensions -name kernel-devel-${UNAME}.rpm -exec ls {} \; | tail -n1)
     KERNEL_HEADERS=$(find /extensions -name kernel-headers-${UNAME}.rpm -exec ls {} \; | tail -n1) 
     KERNEL_CORE=$(find /extensions -name kernel-core-${UNAME}.rpm -exec ls {} \; | tail -n1)
-       
+    KERNEL_MODULES=$(find /extensions -name kernel-modules-${UNAME}.rpm -exec ls {} \; | tail -n1)
+    KERNEL_MODULES_EXTRA=$(find /extensions -name kernel-modules-extra-${UNAME}.rpm -exec ls {} \; | tail -n1)
+    
+    [ ! -z $KERNEL_DEVEL ]
+    [ ! -z $KERNEL_HEADERS ]
+    [ ! -z $KERNEL_CORE ]
+    [ ! -z $KERNEL_MODULES ]
+    [ ! -z $KERNEL_MODULES_EXTRA ]
+
+    # Installation order is important leave this as is 
+    yum -y --setopt=install_weak_deps=False --best install $KERNEL_CORE 
     yum -y --setopt=install_weak_deps=False --best install $KERNEL_DEVEL
     yum -y --setopt=install_weak_deps=False --best install $KERNEL_HEADERS
-    # We do not need dependencies for kernel-core just install the RPM    
-    rpm -ivh --nodeps $KERNEL_CORE
+    yum -y --setopt=install_weak_deps=False --best install $KERNEL_MODULES
+    yum -y --setopt=install_weak_deps=False --best install $KERNEL_MODULES_EXTRA  
+
+    # Install realtime kernel TODO
+    ls /extensions/kernel-rt*
 
 ---
 apiVersion: v1
@@ -123,6 +148,9 @@ data:
     UMOUNT_MACHINE_OS_CONTENT
 
     # --------- Container instructions END ------------------------------------
+
+    # startupprobe readonlyfilesystem would prevent writing to /
+    touch /tmp/ready
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -162,6 +190,9 @@ kind: Pod
 metadata:
   annotations: 
     specialresource.openshift.io/proxy: "true"
+    specialresource.openshift.io/wait: "true"
+    specialresource.openshift.io/wait-for-logs: "touch /tmp/ready"
+
   labels:
     app: {{.SpecialResource.Name}}
   name: {{.SpecialResource.Name}}
@@ -197,6 +228,13 @@ spec:
         - name: dockercfg
           mountPath: /root
           readOnly: true
+    startupProbe:
+      exec:
+        command: [sh, -c, 'ls /tmp/ready']
+      initialDelaySeconds: 10
+      failureThreshold: 60
+      successThreshold: 1
+      periodSeconds: 5
   volumes:
     - name: dockercfg
       secret:

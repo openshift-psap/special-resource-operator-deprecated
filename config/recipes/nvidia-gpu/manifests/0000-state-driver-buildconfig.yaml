@@ -31,6 +31,10 @@ spec:
     type: Git
   strategy:
     dockerStrategy:
+      from:
+        kind: "ImageStreamTag"
+        name: "driver-container-base:v{{.KernelVersion}}"
+        namespace: "driver-container-base"
       buildArgs:
         - name: {{(index .SpecialResource.Spec.DriverContainer.BuildArgs 0).Name}}
           value: {{(index .SpecialResource.Spec.DriverContainer.BuildArgs 0).Value}}

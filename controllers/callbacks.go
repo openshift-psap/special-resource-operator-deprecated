@@ -47,20 +47,26 @@ func beforeCRUDhooks(obj *unstructured.Unstructured, r *SpecialResourceReconcile
 func afterCRUDhooks(obj *unstructured.Unstructured, r *SpecialResourceReconciler) error {
 
 	annotations := obj.GetAnnotations()
+	for key, element := range annotations {
+		log.Info("Annotations", "Key:", key, "Element:", element)
+	}
 
 	if state, found := annotations["specialresource.openshift.io/state"]; found && state == "driver-container" {
+		log.Info("specialresource.openshift.io/state")
 		if err := checkForImagePullBackOff(obj, r); err != nil {
 			return errs.Wrap(err, "Cannot check for ImagePullBackOff")
 		}
 	}
 
 	if wait, found := annotations["specialresource.openshift.io/wait"]; found && wait == "true" {
+		log.Info("specialresource.openshift.io/wait")
 		if err := waitForResource(obj, r); err != nil {
 			return errs.Wrap(err, "Could not wait for resource")
 		}
 	}
 
-	if pattern, found := annotations["specialresrouce.openshift.io/wait-for-logs"]; found && len(pattern) > 0 {
+	if pattern, found := annotations["specialresource.openshift.io/wait-for-logs"]; found && len(pattern) > 0 {
+		log.Info("specialresource.openshift.io/wait-for-logs")
 		if err := waitForDaemonSetLogs(obj, r, pattern); err != nil {
 			return errs.Wrap(err, "Could not wait for DaemonSet logs")
 		}
