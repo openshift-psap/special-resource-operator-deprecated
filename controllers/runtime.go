@@ -220,12 +220,21 @@ func getClusterVersion() (string, string, error) {
 		return "", "", errs.Wrap(err, "ConfigClient unable to get ClusterVersions")
 	}
 
+	var majorMinor string
 	for _, condition := range version.Status.History {
 		if condition.State != "Completed" {
 			continue
 		}
 
-		return condition.Version, condition.Version[0:3], nil
+		s := strings.Split(condition.Version, ".")
+
+		if len(s) > 1 {
+			majorMinor = s[0] + "." + s[1]
+		} else {
+			majorMinor = s[0]
+		}
+
+		return condition.Version, majorMinor, nil
 	}
 
 	return "", "", errs.New("Undefined Cluster Version")
