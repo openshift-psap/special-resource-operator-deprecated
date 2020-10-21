@@ -51,12 +51,12 @@ data:
 
     echo "Enabling RHOCP and EUS RPM repos..."
     yum config-manager --set-enabled rhocp-{{.ClusterVersionMajorMinor}}-for-rhel-8-x86_64-rpms 
-    if ! yum update; then 
+    if ! yum makecache  --releasever={{.OperatingSystemDecimal}}; then 
       yum config-manager --set-disabled rhocp-{{.ClusterVersionMajorMinor}}-for-rhel-8-x86_64-rpms 
     fi 
 
     yum config-manager --set-enabled rhel-8-for-x86_64-baseos-eus-rpms
-    if ! yum update; then 
+    if ! yum makecache  --releasever={{.OperatingSystemDecimal}}; then 
       yum config-manager --set-disabled rhel-8-for-x86_64-baseos-eus-rpms
     fi 
 
@@ -64,7 +64,7 @@ data:
     yum update -y --releasever={{.OperatingSystemDecimal}}
 
     # Additional packages that are mandatory for driver-containers
-    yum -y --setopt=install_weak_deps=False --best install elfutils-libelf-devel kmod binutils
+    yum -y --releasever={{.OperatingSystemDecimal}} --setopt=install_weak_deps=False --best install elfutils-libelf-devel kmod binutils
 
 
     # Try to enable EUS and try to install kernel-devel and kernel-headers RPMs
@@ -85,11 +85,13 @@ data:
     KERNEL_MODULES=$(find /extensions -name kernel-modules-${UNAME}.rpm -exec ls {} \; | tail -n1)
     KERNEL_MODULES_EXTRA=$(find /extensions -name kernel-modules-extra-${UNAME}.rpm -exec ls {} \; | tail -n1)
     
-    [ ! -z $KERNEL_DEVEL ]
-    [ ! -z $KERNEL_HEADERS ]
-    [ ! -z $KERNEL_CORE ]
-    [ ! -z $KERNEL_MODULES ]
-    [ ! -z $KERNEL_MODULES_EXTRA ]
+    # On a 4.5 cluster we only have a subset of these available
+    # If they are empty yum will fail anyway, so I do not see the purpose of checking ! -z ...
+    # [ ! -z $KERNEL_DEVEL ]
+    # [ ! -z $KERNEL_HEADERS ]
+    # [ ! -z $KERNEL_CORE ]
+    # [ ! -z $KERNEL_MODULES ]
+    # [ ! -z $KERNEL_MODULES_EXTRA ]
 
     # Installation order is important leave this as is 
     yum -y --setopt=install_weak_deps=False --best install $KERNEL_CORE 
