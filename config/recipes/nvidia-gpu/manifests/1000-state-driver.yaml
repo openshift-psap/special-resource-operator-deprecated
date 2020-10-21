@@ -38,8 +38,11 @@ metadata:
 data:
   entrypoint.sh: |-
     #!/bin/bash -x
-
     nvidia-driver init 
+
+  version_id: "{{.ClusterVersionMajorMinor}}"
+  rhel_version: "{{.OperatingSystemDecimal}}"
+
 ---
 # Please edit the object below. Lines beginning with a '#' will be ignored,
 # and an empty file will abort the edit. If an error occurs while saving this file will be
@@ -128,6 +131,17 @@ spec:
         imagePullPolicy: Always
         name: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
         command: ["/bin/entrypoint.sh"]
+        env: 
+          - name: VERSION_ID
+            valueFrom:
+              configMapKeyRef:
+                name: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}-entrypoint
+                key: version_id
+          - name: RHEL_VERSION
+            valueFrom:
+              configMapKeyRef:
+                name: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}-entrypoint
+                key: rhel_version
         securityContext:
           privileged: true
           seLinuxOptions:
@@ -140,6 +154,7 @@ spec:
             mountPath: /bin/entrypoint.sh
             readOnly: true
             subPath: entrypoint.sh
+
       volumes:
         - name: run-{{.SpecialResource.Name}}
           hostPath:

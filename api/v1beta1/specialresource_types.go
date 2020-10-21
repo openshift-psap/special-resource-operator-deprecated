@@ -65,6 +65,12 @@ type SpecialResourceBuilArgs struct {
 	Value string `json:"value"`
 }
 
+// SpecialResourceEnvironment defines the observed state of SpecialResource
+type SpecialResourceEnvironment struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 // SpecialResourceGit defines the observed state of SpecialResource
 type SpecialResourceGit struct {
 	Ref string `json:"ref"`
@@ -96,6 +102,7 @@ type SpecialResourceDependency struct {
 // SpecialResourceSpec defines the desired state of SpecialResource
 type SpecialResourceSpec struct {
 	Metadata        metav1.ObjectMeta              `json:"metadata,omitempty"`
+	Environment     []SpecialResourceEnvironment   `json:"environment,omitempty"`
 	DriverContainer SpecialResourceDriverContainer `json:"driverContainer,omitempty"`
 	Node            SpecialResourceNode            `json:"node,omitempty"`
 	DependsOn       []SpecialResourceDependency    `json:"dependsOn,omitempty"`

@@ -64,7 +64,7 @@ data:
     yum update -y --releasever={{.OperatingSystemDecimal}}
 
     # Additional packages that are mandatory for driver-containers
-    yum -y --setopt=install_weak_deps=False --best install elfutils-libelf-devel kmod
+    yum -y --setopt=install_weak_deps=False --best install elfutils-libelf-devel kmod binutils
 
 
     # Try to enable EUS and try to install kernel-devel and kernel-headers RPMs

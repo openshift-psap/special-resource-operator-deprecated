@@ -170,6 +170,20 @@ spec:
                       type: object
                   type: object
               type: object
+            environment:
+              items:
+                description: SpecialResourceEnvironment defines the observed state
+                  of SpecialResource
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+                required:
+                - key
+                - value
+                type: object
+              type: array
             metadata:
               type: object
             node:

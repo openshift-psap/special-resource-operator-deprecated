@@ -9,10 +9,10 @@ spec:
     source:
       git:
         ref: "master"
-        uri: "https://gitlab.com/nvidia/driver.git"
+        uri: "https://gitlab.com/zvonkok/driver.git"
     buildArgs: 
     - name: "DRIVER_VERSION"
-      value: "440.64.00"
+      value: "450.80.02"
   node:
     selector: "feature.node.kubernetes.io/pci-10de.present"
   dependsOn: 
