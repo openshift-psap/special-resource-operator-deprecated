@@ -18,6 +18,8 @@ spec:
     buildArgs:
     - name: "KVER"
       value: "{{.KernelVersion}}"
+    - name: "RELEASEVER"
+      value: "{{.OperatingSystemDecimal}}"
 
   dependsOn: 
   - name: "driver-container-base"
