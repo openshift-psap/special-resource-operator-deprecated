@@ -73,6 +73,7 @@ var runInfo = runtimeInformation{
 		DeviceMonitoring:       "device-monitoring",
 		DeviceGrafana:          "device-grafana",
 		DeviceFeatureDiscovery: "device-feature-discovery",
+		CSIdriver:              "csi-driver",
 	},
 	StateName: resourceStateName{
 		DriverContainer:   "specialresource.openshift.io/driver-container",

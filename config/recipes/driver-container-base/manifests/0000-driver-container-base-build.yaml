@@ -94,11 +94,11 @@ data:
     # [ ! -z $KERNEL_MODULES_EXTRA ]
 
     # Installation order is important leave this as is 
-    yum -y --setopt=install_weak_deps=False --best install $KERNEL_CORE 
-    yum -y --setopt=install_weak_deps=False --best install $KERNEL_DEVEL
-    yum -y --setopt=install_weak_deps=False --best install $KERNEL_HEADERS
-    yum -y --setopt=install_weak_deps=False --best install $KERNEL_MODULES
-    yum -y --setopt=install_weak_deps=False --best install $KERNEL_MODULES_EXTRA  
+    yum -y --releasever={{.OperatingSystemDecimal}} --setopt=install_weak_deps=False --best install $KERNEL_CORE 
+    yum -y --releasever={{.OperatingSystemDecimal}} --setopt=install_weak_deps=False --best install $KERNEL_DEVEL
+    yum -y --releasever={{.OperatingSystemDecimal}} --setopt=install_weak_deps=False --best install $KERNEL_HEADERS
+    yum -y --releasever={{.OperatingSystemDecimal}} --setopt=install_weak_deps=False --best install $KERNEL_MODULES
+    yum -y --releasever={{.OperatingSystemDecimal}} --setopt=install_weak_deps=False --best install $KERNEL_MODULES_EXTRA  
 
     # Install realtime kernel TODO
     ls /extensions/kernel-rt*
