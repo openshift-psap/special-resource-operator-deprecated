@@ -50,12 +50,12 @@ data:
     UNAME=$(uname -r)
 
     echo "Enabling RHOCP and EUS RPM repos..."
-    yum config-manager --set-enabled rhocp-{{.ClusterVersionMajorMinor}}-for-rhel-8-x86_64-rpms 
+    yum config-manager --set-enabled rhocp-{{.ClusterVersionMajorMinor}}-for-rhel-8-x86_64-rpms || true
     if ! yum makecache  --releasever={{.OperatingSystemDecimal}}; then 
       yum config-manager --set-disabled rhocp-{{.ClusterVersionMajorMinor}}-for-rhel-8-x86_64-rpms 
     fi 
 
-    yum config-manager --set-enabled rhel-8-for-x86_64-baseos-eus-rpms
+    yum config-manager --set-enabled rhel-8-for-x86_64-baseos-eus-rpms || true
     if ! yum makecache  --releasever={{.OperatingSystemDecimal}}; then 
       yum config-manager --set-disabled rhel-8-for-x86_64-baseos-eus-rpms
     fi 
