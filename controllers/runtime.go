@@ -25,6 +25,7 @@ type resourceGroupName struct {
 	DeviceMonitoring       string
 	DeviceGrafana          string
 	DeviceFeatureDiscovery string
+	CSIDriver              string
 }
 
 type resourceStateName struct {
@@ -73,7 +74,7 @@ var runInfo = runtimeInformation{
 		DeviceMonitoring:       "device-monitoring",
 		DeviceGrafana:          "device-grafana",
 		DeviceFeatureDiscovery: "device-feature-discovery",
-		CSIdriver:              "csi-driver",
+		CSIDriver:              "csi-driver",
 	},
 	StateName: resourceStateName{
 		DriverContainer:   "specialresource.openshift.io/driver-container",
