@@ -249,7 +249,7 @@ spec:
         kubernetes.io/arch: amd64
         kubernetes.io/os: linux
       priorityClassName: system-cluster-critical
-      serviceAccount: fsx-csi-controller-sa
+      serviceAccount: {{.SpecialResource.Name}}-{{.GroupName.CSIDriver}}-controller
       tolerations:
       - key: CriticalAddonsOnly
         operator: Exists
@@ -331,7 +331,7 @@ spec:
         - mountPath: /csi
           name: plugin-dir
       hostNetwork: true
-      serviceAccount: fsx-csi-node-sa
+      serviceAccount: {{.SpecialResource.Name}}-{{.GroupName.CSIDriver}}-node
       nodeSelector:
         kubernetes.io/arch: amd64
         kubernetes.io/os: linux
