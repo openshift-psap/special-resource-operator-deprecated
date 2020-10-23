@@ -71,14 +71,7 @@ spec:
       serviceAccount: {{.SpecialResource.Name}}-{{.GroupName.DeviceFeatureDiscovery}}
       serviceAccountName: {{.SpecialResource.Name}}-{{.GroupName.DeviceFeatureDiscovery}}
       containers:
-        - image: quay.io/openshift-psap/nvidia-feature-discovery  # nvidia/gpu-feature-discovery:1.0.0-alpha
-          env:
-            - name: NVIDIA_VISIBLE_DEVICES
-              value: all
-            - name: NVIDIA_DRIVER_CAPABILITIES
-              value: "compute,utility"
-            - name: NVIDIA_REQUIRE_CUDA  
-              value: "cuda>=5.0"
+        - image: nvidia/gpu-feature-discovery:v0.2.0
           name: {{.SpecialResource.Name}}-{{.GroupName.DeviceFeatureDiscovery}}
           securityContext:
             privileged: true

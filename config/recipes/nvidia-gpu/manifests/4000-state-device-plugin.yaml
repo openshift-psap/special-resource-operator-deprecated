@@ -109,13 +109,13 @@ spec:
           readOnly: true
           subPath: entrypoint.sh
       containers:
-      - image: nvidia/k8s-device-plugin:1.11 
+      - image: nvidia/k8s-device-plugin:v0.7.0-ubi8
         name: {{.SpecialResource.Name}}-{{.GroupName.DevicePlugin}}-ctr
+        command: ["nvidia-device-plugin"]
+        args:
+        - "--{{(index .SpecialResource.Spec.Environment 0).Key}}={{(index .SpecialResource.Spec.Environment 0).Value}}}"
         securityContext:
           privileged: true
-        env:
-          - name: NVIDIA_VISIBLE_DEVICES
-            value: all
         volumeMounts:
           - name: device-plugin-{{.SpecialResource.Name}}
             mountPath: /var/lib/kubelet/device-plugins
