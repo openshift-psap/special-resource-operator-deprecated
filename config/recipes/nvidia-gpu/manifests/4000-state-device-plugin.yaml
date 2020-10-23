@@ -113,7 +113,10 @@ spec:
         name: {{.SpecialResource.Name}}-{{.GroupName.DevicePlugin}}-ctr
         command: ["nvidia-device-plugin"]
         args:
-        - "--{{(index .SpecialResource.Spec.Environment 0).Key}}={{(index .SpecialResource.Spec.Environment 0).Value}}}"
+        - "--{{(index .SpecialResource.Spec.Environment 0).Key}}={{(index .SpecialResource.Spec.Environment 0).Value}}"
+        - "--pass-device-specs=false"
+        - "--fail-on-init-error=true"
+        - "--device-list-strategy=envvar"
         securityContext:
           privileged: true
         volumeMounts:
