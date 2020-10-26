@@ -13,7 +13,7 @@ verify: fmt
 unit: 
 	@echo "##################### TODO UNIT TEST"
 test-e2e:
-		@echo "##################### TODO TEST E2E"
+	@echo "##################### TODO TEST E2E"
 
 
 # Current Operator version
@@ -48,7 +48,7 @@ all: $(SPECIALRESOURCE)
 
 # Run tests
 test: # generate fmt vet manifests
-	go test -mod=vendor ./... -coverprofile cover.out
+	go test ./... -coverprofile cover.out
 
 # Build manager binary
 manager: generate fmt vet
