@@ -6,8 +6,10 @@ ORG              ?= openshift-psap
 TAG              ?= $(shell git branch | grep \* | cut -d ' ' -f2)
 IMAGE            ?= $(REGISTRY)/$(ORG)/special-resource-operator:$(TAG)
 
+export PATH := go/bin:$(PATH)
 include config/recipes/Makefile
-#specialresource: $(SPECIALRESOURCE) 
+verify: fmt
+
 
 
 # Current Operator version
