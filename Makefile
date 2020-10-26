@@ -8,6 +8,7 @@ IMAGE            ?= $(REGISTRY)/$(ORG)/special-resource-operator:$(TAG)
 
 export PATH := go/bin:$(PATH)
 include config/recipes/Makefile
+
 verify: fmt
 
 
@@ -81,7 +82,7 @@ manifests: controller-gen
 
 # Run go fmt against code
 fmt:
-	go fmt -mod=vendor ./...
+	go fmt ./...
 
 # Run go vet against code
 vet:
