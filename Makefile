@@ -12,8 +12,12 @@ include config/recipes/Makefile
 verify: fmt
 unit: 
 	@echo "##################### TODO UNIT TEST"
+
+
 test-e2e:
-	@echo "##################### TODO TEST E2E"
+	for d in basic; do \
+	  KUBERNETES_CONFIG="$(KUBECONFIG)" go test -v -timeout 40m ./test/e2e/$$d -ginkgo.v -ginkgo.noColor -ginkgo.failFast || exit; \
+	done
 
 
 # Current Operator version
