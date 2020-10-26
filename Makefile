@@ -10,7 +10,10 @@ export PATH := go/bin:$(PATH)
 include config/recipes/Makefile
 
 verify: fmt
-
+unit: 
+	@echo "##################### TODO UNIT TEST"
+test-e2e:
+		@echo "##################### TODO TEST E2E"
 
 
 # Current Operator version
@@ -41,11 +44,11 @@ endif
 # GENERATED all: manager
 all: $(SPECIALRESOURCE)
 
-# Run tests
 
-test: generate fmt vet manifests
-	#go test -mod=vendor ./... -coverprofile cover.out
-	@echo "##################### TODO IMPLEMENT TEST ####################"
+
+# Run tests
+test: # generate fmt vet manifests
+	go test -mod=vendor ./... -coverprofile cover.out
 
 # Build manager binary
 manager: generate fmt vet
@@ -86,7 +89,7 @@ fmt:
 
 # Run go vet against code
 vet:
-	go vet -mod=vendor ./...
+	go vet --mod=vendor ./...
 
 # Generate code
 generate: controller-gen
