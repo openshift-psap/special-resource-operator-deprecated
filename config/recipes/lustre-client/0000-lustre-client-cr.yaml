@@ -11,10 +11,6 @@ spec:
   - key: "access_key"
     value: "AWS_SECRET_ACCESS_KEY"
   driverContainer:
-    source:
-      git:
-        ref: "master"
-        uri: "https://github.com/dagrayvid/driver-containers.git"
     buildArgs:
     - name: "KVER"
       value: "{{.KernelVersion}}"

@@ -43,9 +43,12 @@ type SpecialResourcePaths struct {
 
 // SpecialResourceArtifacts defines the observed state of SpecialResource
 type SpecialResourceArtifacts struct {
-	HostPaths []SpecialResourcePaths  `json:"hostPaths,omitempty"`
-	Images    []SpecialResourceImages `json:"images,omitempty"`
-	Claims    []SpecialResourceClaims `json:"claims,omitempty"`
+	// +kubebuilder:validation:Optional
+	HostPaths []SpecialResourcePaths `json:"hostPaths,omitempty"`
+	// +kubebuilder:validation:Optional
+	Images []SpecialResourceImages `json:"images,omitempty"`
+	// +kubebuilder:validation:Optional
+	Claims []SpecialResourceClaims `json:"claims,omitempty"`
 }
 
 // SpecialResourceNode defines the observed state of SpecialResource
@@ -84,28 +87,35 @@ type SpecialResourceSource struct {
 
 // SpecialResourceDriverContainer defines the desired state of SpecialResource
 type SpecialResourceDriverContainer struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	Source    SpecialResourceSource     `json:"source,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	Source SpecialResourceSource `json:"source,omitempty"`
+	// +kubebuilder:validation:Optional
 	BuildArgs []SpecialResourceBuilArgs `json:"buildArgs,omitempty"`
-	RunArgs   []SpecialResourceRunArgs  `json:"runArgs,omitempty"`
-	Artifacts SpecialResourceArtifacts  `json:"artifacts,omitempty"`
+	// +kubebuilder:validation:Optional
+	RunArgs []SpecialResourceRunArgs `json:"runArgs,omitempty"`
+	// +kubebuilder:validation:Optional
+	Artifacts SpecialResourceArtifacts `json:"artifacts,omitempty"`
 }
 
 // SpecialResourceDependency is a SpecialResource that needs to be Complete
 type SpecialResourceDependency struct {
-	Name           string `json:"name"`
+	Name string `json:"name"`
+	// +kubebuilder:validation:Optional
 	ImageReference string `json:"imageReference"`
 }
 
 // SpecialResourceSpec defines the desired state of SpecialResource
 type SpecialResourceSpec struct {
-	Metadata        metav1.ObjectMeta              `json:"metadata,omitempty"`
-	Environment     []SpecialResourceEnvironment   `json:"environment,omitempty"`
+	Metadata metav1.ObjectMeta `json:"metadata,omitempty"`
+	// +kubebuilder:validation:Optional
+	Environment []SpecialResourceEnvironment `json:"environment,omitempty"`
+	// +kubebuilder:validation:Optional
 	DriverContainer SpecialResourceDriverContainer `json:"driverContainer,omitempty"`
-	Node            SpecialResourceNode            `json:"node,omitempty"`
-	DependsOn       []SpecialResourceDependency    `json:"dependsOn,omitempty"`
+	// +kubebuilder:validation:Optional
+	Node SpecialResourceNode `json:"node,omitempty"`
+	// +kubebuilder:validation:Optional
+	DependsOn []SpecialResourceDependency `json:"dependsOn,omitempty"`
 }
 
 // SpecialResourceStatus defines the observed state of SpecialResource

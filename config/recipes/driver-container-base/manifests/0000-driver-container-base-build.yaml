@@ -66,7 +66,6 @@ data:
     # Additional packages that are mandatory for driver-containers
     yum -y --releasever={{.OperatingSystemDecimal}} --setopt=install_weak_deps=False --best install elfutils-libelf-devel kmod binutils
 
-
     # Try to enable EUS and try to install kernel-devel and kernel-headers RPMs
     if yum -y --releasever={{.OperatingSystemDecimal}} --setopt=install_weak_deps=False --best install \
       kernel-devel-${UNAME} kernel-headers-${UNAME} kernel-core-${UNAME} kernel-modules-${UNAME} \

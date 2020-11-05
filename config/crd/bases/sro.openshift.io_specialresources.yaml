@@ -46,7 +46,6 @@ spec:
                   name:
                     type: string
                 required:
-                - imageReference
                 - name
                 type: object
               type: array
@@ -151,10 +150,8 @@ spec:
                     type: object
                   type: array
                 source:
-                  description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                    Important: Run "operator-sdk generate k8s" to regenerate code
-                    after modifying this file Add custom validation using kubebuilder
-                    tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+                  description: SpecialResourceSource defines the observed state of
+                    SpecialResource
                   properties:
                     git:
                       description: SpecialResourceGit defines the observed state of

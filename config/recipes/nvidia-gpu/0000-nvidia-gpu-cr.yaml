@@ -12,7 +12,7 @@ spec:
     source:
       git:
         ref: "master"
-        uri: "https://gitlab.com/zvonkok/driver.git"
+        uri: "https://gitlab.com/openshift-psap/driver.git"
     buildArgs: 
     - name: "DRIVER_VERSION"
       value: "450.80.02"
