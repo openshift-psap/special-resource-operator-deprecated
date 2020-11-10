@@ -24,11 +24,6 @@ spec:
     - type: "ConfigChange"
     - type: "ImageChange"
   source:
-    git:
-      ref: {{.SpecialResource.Spec.DriverContainer.Source.Git.Ref}}
-      uri: {{.SpecialResource.Spec.DriverContainer.Source.Git.Uri}}
-#    contextDir: {{.OperatingSystemMajor}}
-    type: Git
     dockerfile: |
       FROM image-registry.openshift-image-registry.svc:5000/driver-container-base/driver-container-base:v{{.KernelVersion}}
       MAINTAINER "coreos@lists.fedoraproject.org"
