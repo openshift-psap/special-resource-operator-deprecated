@@ -62,8 +62,8 @@ type SpecialResourceRunArgs struct {
 	Value string `json:"value"`
 }
 
-// SpecialResourceBuilArgs defines the observed state of SpecialResource
-type SpecialResourceBuilArgs struct {
+// SpecialResourceBuildArgs defines the observed state of SpecialResource
+type SpecialResourceBuildArgs struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
