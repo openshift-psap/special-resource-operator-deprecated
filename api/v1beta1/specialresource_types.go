@@ -91,7 +91,7 @@ type SpecialResourceDriverContainer struct {
 	// +kubebuilder:validation:Optional
 	Source SpecialResourceSource `json:"source,omitempty"`
 	// +kubebuilder:validation:Optional
-	BuildArgs []SpecialResourceBuilArgs `json:"buildArgs,omitempty"`
+	BuildArgs []SpecialResourceBuildArgs `json:"buildArgs,omitempty"`
 	// +kubebuilder:validation:Optional
 	RunArgs []SpecialResourceRunArgs `json:"runArgs,omitempty"`
 	// +kubebuilder:validation:Optional
