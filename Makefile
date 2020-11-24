@@ -99,11 +99,11 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # Build the docker image
-podman-build: test
+local-image-build: test
 	podman build . -t ${IMG}
 
 # Push the docker image
-podman-push:
+local-image-push:
 	podman push ${IMG}
 
 # find or download controller-gen
