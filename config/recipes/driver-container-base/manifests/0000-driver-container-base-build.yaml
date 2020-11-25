@@ -122,7 +122,7 @@ data:
     # [ ! -z $KERNEL_MODULES_EXTRA ]
 
     if install_kernel_rpms "${kernel_rpms[@]}"; then
-      echo "EUS - kernel rpms ${kernel_rpms[@]} installed"
+      echo "MOC - kernel rpms ${kernel_rpms[@]} installed"
       exit 0
     fi
 
