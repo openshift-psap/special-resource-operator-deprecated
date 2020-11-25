@@ -122,7 +122,8 @@ spec:
       - image: image-registry.openshift-image-registry.svc:5000/{{.SpecialResource.Spec.Metadata.Namespace}}/{{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}:v{{.KernelVersion}}
         imagePullPolicy: Always
         name: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
-        command: ["/bin/entrypoint.sh"]
+#        command: ["/bin/entrypoint.sh"]
+        command: ["/sbin/init"]
         securityContext:
           privileged: true
           seLinuxOptions:
