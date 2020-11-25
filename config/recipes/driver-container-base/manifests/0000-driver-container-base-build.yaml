@@ -102,14 +102,6 @@ data:
       exit 0
     fi
 
-    #    if yum -y --best install \
-    #      kernel-devel-${UNAME} kernel-headers-${UNAME} kernel-core-${UNAME} kernel-modules-${UNAME} \
-    #      kernel-modules-extra-${UNAME}
-    #    then
-    #      echo "EUS - kernel-devel kernel-headers kernel-core kernel-modules kernel-modules-extra installed"
-    #     exit 0
-    #   fi
-
     # If EUS fails get kernel-devel and kernel-headers from machine-os-content
     echo "EUS and/or rhocp-{{.ClusterVersionMajorMinor}} FAILED - installing from machine-os-content"
 
@@ -133,13 +125,6 @@ data:
       echo "EUS - kernel rpms ${kernel_rpms[@]} installed"
       exit 0
     fi
-
-    # Installation order is important leave this as is 
-    #    yum -y --best install $KERNEL_CORE 
-    #    yum -y --best install $KERNEL_DEVEL
-    #    yum -y --best install $KERNEL_HEADERS
-    #    yum -y --best install $KERNEL_MODULES
-    #    yum -y --best install $KERNEL_MODULES_EXTRA  
 
     # Install realtime kernel TODO
     ls /extensions/kernel-rt*
