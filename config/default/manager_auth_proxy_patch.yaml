@@ -23,8 +23,6 @@ spec:
             - containerPort: 8443
               name: https
           volumeMounts:
-            - name: special-resource-operator-trusted-ca
-              mountPath: /etc/secrets/ca
             - name: special-resource-operator-tls
               mountPath: /etc/secrets
         - name: manager

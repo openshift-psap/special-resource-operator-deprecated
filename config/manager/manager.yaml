@@ -49,7 +49,4 @@ spec:
         - name: special-resource-operator-tls
           secret:
             secretName: special-resource-operator-tls
-        - name: special-resource-operator-trusted-ca
-          configMap:
-            name: special-resource-operator-trusted-ca
       terminationGracePeriodSeconds: 10
