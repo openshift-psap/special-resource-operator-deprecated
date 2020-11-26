@@ -24,7 +24,8 @@ spec:
         control-plane: controller-manager
     spec:
       containers:
-        - imagePullPolicy: Always # TODO
+        - name: manager
+          imagePullPolicy: Always # TODO
           env:
             - name: OPERATOR_NAMESPACE
               valueFrom:
@@ -37,7 +38,6 @@ spec:
             - "--zap-encoder=console"
             - "--zap-log-level=debug"
           image: controller:latest
-          name: manager
           resources:
             limits:
               cpu: 200m
@@ -45,8 +45,4 @@ spec:
             requests:
               cpu: 200m
               memory: 100Mi
-      volumes:
-        - name: special-resource-operator-tls
-          secret:
-            secretName: special-resource-operator-tls
       terminationGracePeriodSeconds: 10

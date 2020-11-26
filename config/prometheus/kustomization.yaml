@@ -1,2 +1,15 @@
+patches:
+  - path: service_serving_cert_patch.json
+    target:
+      kind: Service
+      labelSelector: control-plane=controller-manager
+  - path: service_serving_cert_volumes_patch.json
+    target:
+      kind: Deployment
+      labelSelector: control-plane=controller-manager
+
 resources:
-- monitor.yaml
+  - monitor.yaml
+  - ../default
+#  - ../rbac
+#  - ../manager
