@@ -149,7 +149,7 @@ data:
 
     UNAME=$(uname -r)
     SCRIPT_NAME=install-dependencies.sh
-    TAG={{.SpecialResource.Spec.Metadata.Namespace}}/{{.SpecialResource.Name}}:v${UNAME}
+    TAG={{.SpecialResource.Spec.Namespace}}/{{.SpecialResource.Name}}:v${UNAME}
 
    
     # --------- Container instructions START ----------------------------------
@@ -212,7 +212,7 @@ subjects:
 - kind: ServiceAccount
   name: {{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}-{{.OperatingSystemMajor}}
 userNames:
-- system:serviceaccount:{{.SpecialResource.Spec.Metadata.Namespace}}:{{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}
+- system:serviceaccount:{{.SpecialResource.Spec.Namespace}}:{{.SpecialResource.Name}}-{{.GroupName.DriverContainer}}
 ---
 apiVersion: v1
 kind: Pod
