@@ -55,6 +55,9 @@ func ReconcilerSpecialResources(r *SpecialResourceReconciler, req ctrl.Request) 
 	r.Log.Info("Reconciling SpecialResource(s) in all Namespaces")
 
 	specialresources := &srov1beta1.SpecialResourceList{}
+
+    // set specialResourcesCreated metric to the number of specialresources
+
 	opts := []client.ListOption{}
 	err := r.List(context.TODO(), specialresources, opts...)
 	if err != nil {
