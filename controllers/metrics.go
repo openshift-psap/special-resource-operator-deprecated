@@ -7,9 +7,9 @@ import (
 
 // When adding metric names, see https://prometheus.io/docs/practices/naming/#metric-names
 const (
-    specialResourcesCreatedQuery = "sro_managed_resources_total"
+	specialResourcesCreatedQuery = "sro_managed_resources_total"
 	completedStatesQuery = "sro_states_completed_info"
-
+	
 )
 
 var (
