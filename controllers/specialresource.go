@@ -56,8 +56,6 @@ func ReconcilerSpecialResources(r *SpecialResourceReconciler, req ctrl.Request) 
 
 	specialresources := &srov1beta1.SpecialResourceList{}
 
-	// set specialResourcesCreated metric to the number of specialresources
-
 	opts := []client.ListOption{}
 	err := r.List(context.TODO(), specialresources, opts...)
 	if err != nil {
@@ -70,6 +68,9 @@ func ReconcilerSpecialResources(r *SpecialResourceReconciler, req ctrl.Request) 
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	// set specialResourcesCreated metric to the number of specialresources
+	setSpecialResourcesCreated(len(specialresources.Items))
 
 	for _, r.parent = range specialresources.Items {
 

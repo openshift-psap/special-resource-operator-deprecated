@@ -8,8 +8,7 @@ import (
 // When adding metric names, see https://prometheus.io/docs/practices/naming/#metric-names
 const (
 	specialResourcesCreatedQuery = "sro_managed_resources_total"
-	completedStatesQuery = "sro_states_completed_info"
-	
+	completedStatesQuery         = "sro_states_completed_info"
 )
 
 var (
@@ -31,6 +30,10 @@ var (
 
 func setCompletedState(specialResource string, state string, value int) {
 	completedStates.WithLabelValues(specialResource, state).Set(float64(value))
+}
+
+func setSpecialResourcesCreated(value int) {
+	specialResourcesCreated.Set(float64(value))
 }
 
 func init() {
