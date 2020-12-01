@@ -50,7 +50,7 @@ data:
     kernel_version=$(uname -r)
 
     # Adding the full name here so we can use one function 
-    # to install from EUS, base and MOC (machine-os-content)
+    # to install from EUS, base and machine-os-content (MOC)
     kernel_rpms=( 
       kernel-core-${kernel_version}
       kernel-devel-${kernel_version}
