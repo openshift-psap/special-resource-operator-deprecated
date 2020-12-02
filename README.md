@@ -69,10 +69,10 @@ This way one can be sure that only the correct driver version is scheduled on th
 To check if the driver and the hook are correctly deployed, the operator will schedule a simple GPU workload and check if the Pod status is `Success`, which means the application returned succesfully without an error. The GPU workload will exit with an error, it the driver or the userspace part are not working correctly. This Pod will not allocate an extended resource, only checking if the GPU is working. 
 
 #### State Device Plugin
-As the name already suggests, this state will deploy a special resource DevicePlugin with all its dependencies, see [state-device-plugin](https://github.com/openshift-psap/special-resource-operator/tree/master/assets/state-device-plugin) for a complete list. 
+As the name already suggests, this state will deploy a special resource [device plugin](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/) with all its dependencies, see [state-device-plugin](https://github.com/openshift-psap/special-resource-operator/tree/master/assets/0003-state-device-plugin.yaml) for its manifest. 
 
 #### State Device Plugin Validation
-One will use the same GPU workload as before for validation but this time the Pod will request a extended resource (1) to check if the DevicePlugin has correctly advertised the GPUs to the cluster and (2) to check if userspace and kernelspace are working correclty. 
+One will use the same GPU workload as before for validation but this time the Pod will request a extended resource (1) to check if the device plugin has correctly advertised the GPUs to the cluster and (2) to check if userspace and kernelspace are working correclty. 
 
 #### State Monitoring
 This state uses a custom metrics exporter DaemonSet to export metrics for Prometheus. A ServiceMonitor adds this exporter as a new scrape target. 
