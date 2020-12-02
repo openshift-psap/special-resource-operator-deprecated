@@ -254,8 +254,10 @@ func ReconcileHardwareStates(r *SpecialResourceReconciler, config unstructured.U
 		log.Info("Executing", "State", state)
 		namespacedYAML := []byte(manifests[state].(string))
 		if err := createFromYAML(namespacedYAML, r, r.specialresource.Spec.Namespace); err != nil {
+			setCompletedState(r.specialresource.Name, state, 0)
 			return errs.Wrap(err, "Failed to create resources")
 		}
+		setCompletedState(r.specialresource.Name, state, 1)
 	}
 
 	return nil
